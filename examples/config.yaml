@@ -1,0 +1,17 @@
+server:
+  host: 127.0.0.1
+  port: 8787
+routing:
+  mode: sticky
+  sessionTtlHours: 24
+  maxFailoversPerRequest: 2
+quota:
+  refreshIntervalSeconds: 60
+dashboard:
+  enabled: true
+aliases:
+  flash: deepseek/deepseek-v4-flash
+  vision: deepseek/deepseek-v4-flash-vision-exp
+  pro: deepseek/deepseek-v4-pro
+fallback:
+  enabled: false
