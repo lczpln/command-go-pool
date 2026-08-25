@@ -51,6 +51,16 @@ function headerMap(headers: Record<string, unknown>): Record<string, string | un
   return out;
 }
 
+function presentedApiKeys(headers: Record<string, unknown>): string[] {
+  const map = headerMap(headers);
+  const keys: string[] = [];
+  const bearer = map.authorization?.replace(/^Bearer\s+/i, "").trim();
+  if (bearer) keys.push(bearer);
+  const headerKey = map["x-api-key"]?.trim();
+  if (headerKey) keys.push(headerKey);
+  return keys;
+}
+
 function publicAccount(runtime: Runtime, id: string) {
   const account = runtime.pool.get(id);
   if (!account) return undefined;
@@ -109,9 +119,7 @@ export async function buildApp(runtime: Runtime) {
     if (!apiKey) return;
     if (!exposed && !isInference) return;
     if (isDashboard && (req.method === "GET" || req.method === "HEAD")) return;
-    const provided =
-      headerMap(req.headers).authorization?.replace(/^Bearer\s+/i, "") ?? headerMap(req.headers)["x-api-key"];
-    if (provided !== apiKey) {
+    if (!presentedApiKeys(req.headers).includes(apiKey)) {
       return reply.code(401).send({ error: { message: "Invalid pool API key", type: "authentication_error" } });
     }
   });

@@ -25,7 +25,7 @@ export const anthropicMessageSchema = z.object({
   max_tokens: z.number(),
   messages: z.array(
     z.object({
-      role: z.enum(["user", "assistant"]),
+      role: z.enum(["user", "assistant", "system"]),
       content: z.union([z.string(), z.array(contentBlock)]),
     }),
   ),
@@ -63,10 +63,24 @@ export function isAnthropicQuotaProbe(body: AnthropicMessageRequest): boolean {
   return text?.trim().toLowerCase() === "quota";
 }
 
+function systemText(content: AnthropicMessageRequest["messages"][number]["content"]): string {
+  if (typeof content === "string") return content;
+  return content
+    .filter((part): part is { type: "text"; text: string } => part.type === "text")
+    .map((part) => part.text)
+    .join("\n");
+}
+
 export function anthropicToNormalized(body: AnthropicMessageRequest, aliases: Record<string, string>): NormalizedRequest {
-  const system = typeof body.system === "string" ? body.system : body.system?.map((b) => b.text).join("\n");
+  const topLevel = typeof body.system === "string" ? body.system : body.system?.map((b) => b.text).join("\n");
+  const fromMessages: string[] = [];
   const messages: NormalizedMessage[] = [];
   for (const message of body.messages) {
+    if (message.role === "system") {
+      const text = systemText(message.content).trim();
+      if (text) fromMessages.push(text);
+      continue;
+    }
     const parts = typeof message.content === "string" ? [{ type: "text" as const, text: message.content }] : message.content;
     const mapped: ContentPart[] = [];
     const toolResults: ContentPart[] = [];
@@ -101,6 +115,7 @@ export function anthropicToNormalized(body: AnthropicMessageRequest, aliases: Re
         ? "medium"
         : "low"
     : undefined;
+  const system = [topLevel, ...fromMessages].filter(Boolean).join("\n\n") || undefined;
   return {
     model: aliases[body.model] ?? body.model,
     system,

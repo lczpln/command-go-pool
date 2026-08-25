@@ -59,4 +59,20 @@ describe("protocol mapping", () => {
     const n = anthropicToNormalized(body, {});
     expect(n.messages[0]?.role).toBe("tool");
   });
+
+  it("lifts in-array system messages onto the top-level system prompt", () => {
+    const body = anthropicMessageSchema.parse({
+      model: "m",
+      max_tokens: 32,
+      system: "top",
+      messages: [
+        { role: "user", content: "hi" },
+        { role: "system", content: [{ type: "text", text: "extra" }] },
+        { role: "assistant", content: "ok" },
+      ],
+    });
+    const n = anthropicToNormalized(body, {});
+    expect(n.system).toBe("top\n\nextra");
+    expect(n.messages.map((message) => message.role)).toEqual(["user", "assistant"]);
+  });
 });

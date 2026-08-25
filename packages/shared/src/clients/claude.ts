@@ -70,6 +70,7 @@ function writeClaudeFile(file: string, baseUrl: string, apiKey?: string, models?
   });
   envBlock.ANTHROPIC_BASE_URL = baseUrl;
   envBlock.ANTHROPIC_API_KEY = clientApiKey(apiKey);
+  envBlock.ANTHROPIC_AUTH_TOKEN = envBlock.ANTHROPIC_API_KEY;
   envBlock.ANTHROPIC_DEFAULT_SONNET_MODEL = defaults.sonnet;
   envBlock.ANTHROPIC_DEFAULT_OPUS_MODEL = defaults.opus;
   envBlock.ANTHROPIC_DEFAULT_HAIKU_MODEL = defaults.haiku;
@@ -130,6 +131,7 @@ export const claudeAdapter: ClientAdapter = {
     const current = asRecord(JSON.parse(readFileSync(file, "utf8")));
     const envBlock = asRecord(current.env);
     envBlock.ANTHROPIC_API_KEY = apiKey;
+    envBlock.ANTHROPIC_AUTH_TOKEN = apiKey;
     envBlock.ANTHROPIC_BASE_URL = typeof envBlock.ANTHROPIC_BASE_URL === "string" ? envBlock.ANTHROPIC_BASE_URL : baseUrl;
     current.env = envBlock;
     writeFileSync(file, `${JSON.stringify(current, null, 2)}\n`);

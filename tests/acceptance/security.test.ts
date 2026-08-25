@@ -40,6 +40,18 @@ describe("security gates", () => {
       headers: { authorization: "Bearer pool-secret" },
     });
     expect(ok.statusCode).toBe(200);
+    const viaHeader = await instance.app.inject({
+      method: "GET",
+      url: "/v1/models",
+      headers: { "x-api-key": "pool-secret" },
+    });
+    expect(viaHeader.statusCode).toBe(200);
+    const claudeLogin = await instance.app.inject({
+      method: "GET",
+      url: "/v1/models",
+      headers: { authorization: "Bearer sk-ant-oat01-not-the-pool-key", "x-api-key": "pool-secret" },
+    });
+    expect(claudeLogin.statusCode).toBe(200);
     await instance.close();
   });
 

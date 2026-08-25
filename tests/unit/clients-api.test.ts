@@ -50,9 +50,10 @@ describe("client and pool key APIs", () => {
     expect(body.updated.map((row) => row.id).sort()).toEqual(["claude", "opencode"]);
     expect(body.config.server.apiKey).toBe("[set]");
     const oc = JSON.parse(readFileSync(opencode, "utf8")) as { provider: { "command-go-pool": { options: { apiKey: string } } } };
-    const cc = JSON.parse(readFileSync(claude, "utf8")) as { env: { ANTHROPIC_API_KEY: string } };
+    const cc = JSON.parse(readFileSync(claude, "utf8")) as { env: { ANTHROPIC_API_KEY: string; ANTHROPIC_AUTH_TOKEN: string } };
     expect(oc.provider["command-go-pool"].options.apiKey).toBe(body.apiKey);
     expect(cc.env.ANTHROPIC_API_KEY).toBe(body.apiKey);
+    expect(cc.env.ANTHROPIC_AUTH_TOKEN).toBe(body.apiKey);
     await instance.close();
   });
 

@@ -68,9 +68,10 @@ describe("client adapters", () => {
     expect(isPoolApiKeyFormat(rotated.apiKey)).toBe(true);
     expect(rotated.updated).toHaveLength(2);
     const oc = JSON.parse(readFileSync(opencode, "utf8")) as { provider: { "command-go-pool": { options: { apiKey: string } } } };
-    const cc = JSON.parse(readFileSync(claude, "utf8")) as { env: { ANTHROPIC_API_KEY: string } };
+    const cc = JSON.parse(readFileSync(claude, "utf8")) as { env: { ANTHROPIC_API_KEY: string; ANTHROPIC_AUTH_TOKEN: string } };
     expect(oc.provider["command-go-pool"].options.apiKey).toBe(rotated.apiKey);
     expect(cc.env.ANTHROPIC_API_KEY).toBe(rotated.apiKey);
+    expect(cc.env.ANTHROPIC_AUTH_TOKEN).toBe(rotated.apiKey);
   });
 
   it("disconnects OpenCode and Claude without leaving pool config behind", async () => {

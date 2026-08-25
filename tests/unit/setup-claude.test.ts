@@ -14,10 +14,11 @@ describe("Claude setup", () => {
       file,
     );
     const written = JSON.parse(readFileSync(file, "utf8")) as {
-      env: { ANTHROPIC_BASE_URL: string; ANTHROPIC_API_KEY: string };
+      env: { ANTHROPIC_BASE_URL: string; ANTHROPIC_API_KEY: string; ANTHROPIC_AUTH_TOKEN: string };
     };
     expect(written.env.ANTHROPIC_BASE_URL).toBe("http://127.0.0.1:8787");
     expect(written.env.ANTHROPIC_API_KEY).toBe("cgp_claude_secret");
+    expect(written.env.ANTHROPIC_AUTH_TOKEN).toBe("cgp_claude_secret");
     expect(message).toContain(`Wrote ${file}`);
     expect(message).toContain("does not modify ~/.claude/settings.json");
     expect(message).toContain(`claude --settings ${file}`);
@@ -28,7 +29,10 @@ describe("Claude setup", () => {
     const dir = mkdtempSync(join(tmpdir(), "cgp-claude-"));
     const file = join(dir, "command-go-pool.json");
     await setupClaude(parseAppConfig({ server: { host: "127.0.0.1", port: 8787 } }), file);
-    const written = JSON.parse(readFileSync(file, "utf8")) as { env: { ANTHROPIC_API_KEY: string } };
+    const written = JSON.parse(readFileSync(file, "utf8")) as {
+      env: { ANTHROPIC_API_KEY: string; ANTHROPIC_AUTH_TOKEN: string };
+    };
     expect(written.env.ANTHROPIC_API_KEY).toBe("pool-managed");
+    expect(written.env.ANTHROPIC_AUTH_TOKEN).toBe("pool-managed");
   });
 });
