@@ -28,6 +28,8 @@ type OpenCodeModelEntry = {
   name: string;
   reasoning?: boolean;
   interleaved?: { field: "reasoning_content" };
+  attachment?: boolean;
+  modalities?: { input: Array<"text" | "image">; output: Array<"text"> };
   limit?: { context: number; output: number };
 };
 
@@ -38,6 +40,14 @@ const OPENCODE_VISION_AGENT = {
   tools: { "*": false, read: true },
   permission: { "*": "deny", read: "allow" },
   options: {},
+};
+
+const OPENCODE_VISION_MODEL: Pick<OpenCodeModelEntry, "attachment" | "modalities"> = {
+  attachment: true,
+  modalities: {
+    input: ["text", "image"],
+    output: ["text"],
+  },
 };
 
 export function pickOpenCodeVisionModel(models: OpenCodeModelInput[]): string | undefined {
@@ -131,9 +141,11 @@ export function opencodeModelEntry(model: OpenCodeModelInput): OpenCodeModelEntr
   const reasoning = model.reasoning ?? traits.reasoning ?? true;
   const context = model.contextWindow ?? traits.contextWindow;
   const output = model.outputLimit ?? traits.outputLimit ?? (context ? Math.min(context, DEFAULT_OUTPUT_LIMIT) : undefined);
+  const vision = isRequiredVisionModel(model.id);
   return {
     name: model.name ?? displayNameForModel(model.id),
     ...(reasoning ? { reasoning: true, interleaved: { field: "reasoning_content" as const } } : {}),
+    ...(vision ? OPENCODE_VISION_MODEL : {}),
     ...(context ? { limit: { context, output: output ?? context } } : {}),
   };
 }

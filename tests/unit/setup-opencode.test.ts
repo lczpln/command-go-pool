@@ -130,7 +130,7 @@ describe("OpenCode setup", () => {
     expect(written.provider["command-go-pool"].models["anthropic/claude-sonnet-5"].attachment).toBeUndefined();
   });
 
-  it("writes every pool model as text-only and leaves vision to opencode-eyesight", () => {
+  it("keeps non-vision pool models text-only so opencode-eyesight can intercept images", () => {
     const dir = mkdtempSync(join(tmpdir(), "cgp-oc-vision-"));
     const file = join(dir, "opencode.json");
     writeOpenCodeConfig({
@@ -176,6 +176,11 @@ describe("OpenCode setup", () => {
         build?: unknown;
         vision?: { model?: string; tools?: Record<string, unknown>; permission?: Record<string, unknown> };
       };
+      provider: {
+        "command-go-pool": {
+          models: Record<string, { attachment?: boolean; modalities?: { input: string[]; output: string[] } }>;
+        };
+      };
     };
     expect(written.plugin[0]).toBe("@warp-dot-dev/opencode-warp");
     expect(written.plugin[1]).toEqual(["opencode-eyesight", { model: "command-go-pool/xiaomi/mimo-v2.5" }]);
@@ -186,6 +191,38 @@ describe("OpenCode setup", () => {
       permission: { "*": "deny", read: "allow" },
       options: {},
     });
+    expect(written.provider["command-go-pool"].models["xiaomi/mimo-v2.5"]).toMatchObject({
+      attachment: true,
+      modalities: { input: ["text", "image"], output: ["text"] },
+    });
+    expect(written.provider["command-go-pool"].models["deepseek/deepseek-v4-flash"].attachment).toBeUndefined();
+    expect(written.provider["command-go-pool"].models["deepseek/deepseek-v4-flash"].modalities).toBeUndefined();
+    expect(written.provider["command-go-pool"].models["google/gemini-3.5-flash-lite"].attachment).toBeUndefined();
+    expect(written.provider["command-go-pool"].models["google/gemini-3.5-flash-lite"].modalities).toBeUndefined();
+  });
+
+  it("does not declare image input on MiMo Pro or on the eyesight fallback model", () => {
+    const dir = mkdtempSync(join(tmpdir(), "cgp-oc-eyesight-pro-"));
+    const file = join(dir, "opencode.json");
+    writeOpenCodeConfig({
+      baseUrl: "http://127.0.0.1:8787/v1",
+      file,
+      models: [{ id: "xiaomi/mimo-v2.5-pro" }, { id: "deepseek/deepseek-v4-flash" }],
+    });
+    const written = JSON.parse(readFileSync(file, "utf8")) as {
+      plugin: unknown[];
+      provider: {
+        "command-go-pool": {
+          models: Record<string, { attachment?: boolean; modalities?: { input: string[] } }>;
+        };
+      };
+    };
+    expect(written.plugin).toEqual([
+      ["opencode-eyesight", { model: "command-go-pool/xiaomi/mimo-v2.5-pro" }],
+    ]);
+    expect(written.provider["command-go-pool"].models["xiaomi/mimo-v2.5-pro"].attachment).toBeUndefined();
+    expect(written.provider["command-go-pool"].models["xiaomi/mimo-v2.5-pro"].modalities).toBeUndefined();
+    expect(written.provider["command-go-pool"].models["deepseek/deepseek-v4-flash"].attachment).toBeUndefined();
   });
 
   it("falls back to the first pool model when MiMo is not in the catalog", () => {
