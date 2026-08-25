@@ -240,6 +240,54 @@ describe("HttpAlphaTransport.getAccountStatus", () => {
     expect(status.quota.monthly?.total).toBe(70);
     expect(status.quota.monthly?.remainingPercent).toBeCloseTo(90.74, 1);
   });
+
+  it("tags status fetches as health and generate as generate", async () => {
+    const transport = new HttpAlphaTransport({
+      apiBase: "https://api.commandcode.ai",
+      cliVersion: "0.52.1",
+      timeoutMs: 5_000,
+      idleTimeoutMs: 1_000,
+      fetchImpl: async (url) => {
+        const path = String(url);
+        if (path.endsWith("/alpha/generate")) return new Response("", { status: 200 });
+        if (path.endsWith("/alpha/whoami")) return jsonResponse({ ok: true });
+        if (path.endsWith("/alpha/billing/credits")) return jsonResponse({});
+        if (path.endsWith("/alpha/billing/subscriptions")) return jsonResponse({});
+        if (path.endsWith("/provider/v1/models")) return jsonResponse({ data: [] });
+        return jsonResponse({ error: "missing" }, 404);
+      },
+    });
+    await transport.getAccountStatus({ accountId: "acc_1", apiKey: "user_test" });
+    expect(transport.lastRequestKind).toBe("health");
+    for await (const _chunk of transport.generate(
+      { accountId: "acc_1", apiKey: "user_test" },
+      { model: "deepseek/deepseek-v4-flash", messages: [], stream: true },
+    )) {
+      /* drain */
+    }
+    expect(transport.lastRequestKind).toBe("generate");
+  });
+
+  it("aborts getAccountStatus when the health signal fires", async () => {
+    const controller = new AbortController();
+    const transport = new HttpAlphaTransport({
+      apiBase: "https://api.commandcode.ai",
+      cliVersion: "0.52.1",
+      timeoutMs: 5_000,
+      idleTimeoutMs: 1_000,
+      fetchImpl: (_url, init) =>
+        new Promise((_, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            const err = new Error("aborted");
+            err.name = "AbortError";
+            reject(err);
+          });
+        }),
+    });
+    const pending = transport.getAccountStatus({ accountId: "acc_1", apiKey: "user_test" }, controller.signal);
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
 });
 
 describe("POST /api/accounts quota", () => {

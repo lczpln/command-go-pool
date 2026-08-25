@@ -197,7 +197,7 @@ export interface CommandCodeTransport {
     request: NormalizedRequest,
     signal?: AbortSignal,
   ): AsyncIterable<NormalizedChunk>;
-  getAccountStatus(account: AccountCredential): Promise<AccountStatusSnapshot>;
+  getAccountStatus(account: AccountCredential, signal?: AbortSignal): Promise<AccountStatusSnapshot>;
   testCredential(account: AccountCredential): Promise<AuthResult>;
 }
 

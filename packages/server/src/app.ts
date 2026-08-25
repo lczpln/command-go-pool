@@ -66,12 +66,12 @@ function presentedApiKeys(headers: Record<string, unknown>): string[] {
   return keys;
 }
 
-function publicAccount(runtime: Runtime, id: string) {
+async function publicAccount(runtime: Runtime, id: string) {
   const account = runtime.pool.get(id);
   if (!account) return undefined;
   const { credentialRef: _secret, ...rest } = account;
-  const day = nowRollup(runtime, id, 86_400_000);
-  const month = nowRollup(runtime, id, 30 * 86_400_000);
+  const day = await nowRollup(runtime, id, 86_400_000);
+  const month = await nowRollup(runtime, id, 30 * 86_400_000);
   const cacheRead = Number(month?.cacheReadTokens ?? 0);
   const input = Number(month?.inputTokens ?? 0);
   const cacheHit = cacheRead + input > 0 ? cacheRead / (cacheRead + input) : undefined;
@@ -85,8 +85,9 @@ function publicAccount(runtime: Runtime, id: string) {
   };
 }
 
-function nowRollup(runtime: Runtime, accountId: string, windowMs: number) {
-  return runtime.usage.rollup(Date.now() - windowMs, "account").find((row) => String(row.key) === accountId) as
+async function nowRollup(runtime: Runtime, accountId: string, windowMs: number) {
+  const rows = await runtime.usage.rollup(Date.now() - windowMs, "account");
+  return rows.find((row) => String(row.key) === accountId) as
     | { requests?: number; inputTokens?: number; cacheReadTokens?: number; estimatedCost?: number | null }
     | undefined;
 }
@@ -306,7 +307,9 @@ export async function buildApp(runtime: Runtime) {
     return anthropicFinal(id, normalized.model, text, tools, usage);
   });
 
-  app.get("/api/accounts", async () => ({ accounts: runtime.pool.list().map((a) => publicAccount(runtime, a.id)) }));
+  app.get("/api/accounts", async () => ({
+    accounts: await Promise.all(runtime.pool.list().map((a) => publicAccount(runtime, a.id))),
+  }));
 
   app.post("/api/accounts", async (req, reply) => {
     const raw = req.body;
@@ -336,7 +339,7 @@ export async function buildApp(runtime: Runtime) {
       });
       emit(runtime, { level: "info", category: "system", type: "account.updated", payload: { accountId: account.id } });
       return {
-        account: publicAccount(runtime, account.id),
+        account: await publicAccount(runtime, account.id),
         test: {
           ok: true,
           message: "Authentication successful",
@@ -348,7 +351,7 @@ export async function buildApp(runtime: Runtime) {
       if (!test.ok) return rejectAuth(test.message);
       runtime.pool.update(account.id, { ...modelInventory(test.models ?? []), status: "available" });
       emit(runtime, { level: "info", category: "system", type: "account.updated", payload: { accountId: account.id } });
-      return { account: publicAccount(runtime, account.id), test };
+      return { account: await publicAccount(runtime, account.id), test };
     }
   });
 
@@ -387,7 +390,7 @@ export async function buildApp(runtime: Runtime) {
     }
     runtime.pool.update(id, patch);
     emit(runtime, { level: "info", category: "system", type: "account.updated", payload: { accountId: id, enabled: body.enabled } });
-    return { account: publicAccount(runtime, id) };
+    return { account: await publicAccount(runtime, id) };
   });
 
   app.delete("/api/accounts/:id", async (req, reply) => {
@@ -448,20 +451,29 @@ export async function buildApp(runtime: Runtime) {
     const month = now - 30 * 86_400_000;
     const accounts = runtime.pool.list();
     const paid = accounts.reduce((s, a) => s + (a.monthlySubscriptionCost ?? 0), 0);
-    const monthRollup = runtime.usage.rollup(month, undefined, scoped)[0] as { estimatedCost?: number; requests?: number; inputTokens?: number; cacheReadTokens?: number; outputTokens?: number } | undefined;
-    const consumed = Number(monthRollup?.estimatedCost ?? 0);
-    const cacheRead = Number(monthRollup?.cacheReadTokens ?? 0);
-    const input = Number(monthRollup?.inputTokens ?? 0);
+    const [today, weekRow, monthRollup, byAccount, byModel, bySession, series] = await Promise.all([
+      runtime.usage.rollup(day, undefined, scoped),
+      runtime.usage.rollup(week, undefined, scoped),
+      runtime.usage.rollup(month, undefined, scoped),
+      runtime.usage.rollup(month, "account", scoped),
+      runtime.usage.rollup(month, "model", scoped),
+      runtime.usage.rollup(month, "session", scoped),
+      runtime.usage.series(week, 3600_000, scoped),
+    ]);
+    const monthRow = monthRollup[0] as { estimatedCost?: number; requests?: number; inputTokens?: number; cacheReadTokens?: number; outputTokens?: number } | undefined;
+    const consumed = Number(monthRow?.estimatedCost ?? 0);
+    const cacheRead = Number(monthRow?.cacheReadTokens ?? 0);
+    const input = Number(monthRow?.inputTokens ?? 0);
     const cacheHit = cacheRead + input > 0 ? cacheRead / (cacheRead + input) : undefined;
     return {
-      today: runtime.usage.rollup(day, undefined, scoped)[0],
-      week: runtime.usage.rollup(week, undefined, scoped)[0],
-      month: monthRollup,
+      today: today[0],
+      week: weekRow[0],
+      month: monthRow,
       windows: clientQuota(runtime, filter.accountId),
-      byAccount: runtime.usage.rollup(month, "account", scoped),
-      byModel: runtime.usage.rollup(month, "model", scoped),
-      bySession: runtime.usage.rollup(month, "session", scoped),
-      series: runtime.usage.series(week, 3600_000, scoped),
+      byAccount,
+      byModel,
+      bySession,
+      series,
       paid,
       consumed: consumed || undefined,
       subsidy: paid && consumed ? subsidyMultiplier(paid, consumed) : undefined,

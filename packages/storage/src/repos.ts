@@ -226,7 +226,32 @@ export type UsageFilter = {
   sessionId?: string;
 };
 
-type UsageGroup = "account" | "model" | "session";
+export type UsageGroup = "account" | "model" | "session";
+
+export type UsageRecord = {
+  accountId?: string;
+  sessionId?: string;
+  model?: string;
+  inputTokens?: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+  outputTokens?: number;
+  reasoningTokens?: number;
+  latencyMs?: number;
+  ttftMs?: number;
+  error?: string;
+  estimatedCost?: number;
+};
+
+export interface UsageStore {
+  record(event: UsageRecord): void;
+  rollup(since: number, group?: UsageGroup, filter?: UsageFilter): Promise<Record<string, unknown>[]>;
+  series(
+    since: number,
+    bucketMs: number,
+    filter?: UsageFilter,
+  ): Promise<{ t: number; requests: number; tokens: number; cost: number }[]>;
+}
 
 const GROUP_COLUMN: Record<UsageGroup, string> = {
   account: "account_id",
@@ -261,20 +286,7 @@ function usageWhere(since: number, filter?: UsageFilter, omit?: keyof UsageFilte
 export class UsageRepo {
   constructor(private readonly db: Database.Database) {}
 
-  record(event: {
-    accountId?: string;
-    sessionId?: string;
-    model?: string;
-    inputTokens?: number;
-    cacheReadTokens?: number;
-    cacheWriteTokens?: number;
-    outputTokens?: number;
-    reasoningTokens?: number;
-    latencyMs?: number;
-    ttftMs?: number;
-    error?: string;
-    estimatedCost?: number;
-  }): void {
+  record(event: UsageRecord): void {
     this.db
       .prepare(
         `INSERT INTO usage_events (account_id, session_id, model, input_tokens, cache_read_tokens, cache_write_tokens,

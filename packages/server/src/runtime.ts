@@ -13,7 +13,7 @@ import type {
 import { isLoopbackHost } from "@command-go-pool/shared";
 import type { AccountPool } from "@command-go-pool/account-pool";
 import type { SessionRouter } from "@command-go-pool/session-router";
-import type { EventRepo, SessionRepo, UsageRepo } from "@command-go-pool/storage";
+import type { EventRepo, SessionRepo, UsageStore } from "@command-go-pool/storage";
 import { aggregatePool } from "@command-go-pool/quota-engine";
 
 export interface Runtime {
@@ -22,11 +22,13 @@ export interface Runtime {
   pool: AccountPool;
   router: SessionRouter;
   transport: CommandCodeTransport;
-  sessions: SessionRepo;
-  usage: UsageRepo;
-  events: EventRepo;
+  sessions: Pick<SessionRepo, "get" | "upsert" | "bind" | "listActive" | "bindings">;
+  usage: UsageStore;
+  events: Pick<EventRepo, "append" | "list">;
   bus: EventBus;
   startedAt: number;
+  inflightGenerates: number;
+  healthAbort?: AbortController;
 }
 
 export function emit(runtime: Runtime, partial: Omit<PoolEvent, "id" | "at">): PoolEvent {
@@ -84,6 +86,7 @@ async function* pump(
     let ttft: number | undefined;
     let usage: TokenUsage | undefined;
     let errorChunk: Extract<NormalizedChunk, { type: "error" }> | undefined;
+    beginGenerate(runtime);
     try {
       for await (const chunk of runtime.transport.generate(cred, request, signal)) {
         if (chunk.type === "error") {
@@ -110,6 +113,8 @@ async function* pump(
           failover: !signal?.aborted,
         },
       };
+    } finally {
+      endGenerate(runtime);
     }
     if (!errorChunk) return;
     const err = errorChunk.error;
@@ -144,6 +149,15 @@ async function* pump(
       payload: { sessionId: session.id, from: account.id, to: next.id, reason: err.code },
     });
   }
+}
+
+export function beginGenerate(runtime: Runtime): void {
+  runtime.inflightGenerates += 1;
+  runtime.healthAbort?.abort();
+}
+
+export function endGenerate(runtime: Runtime): void {
+  runtime.inflightGenerates = Math.max(0, runtime.inflightGenerates - 1);
 }
 
 function finishSuccess(

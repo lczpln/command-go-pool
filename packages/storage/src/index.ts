@@ -28,4 +28,7 @@ export { dataHome, ensureHome, paths, existsConfig } from "./paths.js";
 export { SecretStore } from "./secrets.js";
 export { openDatabase } from "./db.js";
 export { AccountRepo, SessionRepo, UsageRepo, EventRepo } from "./repos.js";
-export type { UsageFilter } from "./repos.js";
+export type { UsageFilter, UsageGroup, UsageRecord, UsageStore } from "./repos.js";
+export { openSqliteBridge, SqliteBridge } from "./sqlite-bridge.js";
+export { QueuedAccountRepo, QueuedSessionRepo, QueuedUsageRepo, QueuedEventRepo, reviveAccount } from "./queued.js";
+export type { SessionBinding } from "./queued.js";

@@ -71,7 +71,7 @@ describe("persistence", () => {
     expect(restored[0]?.status).toBe("quota_exhausted");
     expect(restored[0]?.quota.fiveHour?.remainingPercent).toBe(42);
     expect(second.runtime.sessions.get("ses_persist")?.requests).toBe(4);
-    const usage = second.runtime.usage.rollup(Date.now() - 86_400_000)[0] as { requests?: number };
+    const usage = (await second.runtime.usage.rollup(Date.now() - 86_400_000))[0] as { requests?: number };
     expect(Number(usage.requests)).toBeGreaterThan(0);
     expect(second.runtime.pool.credential(restored[0]!.id)?.apiKey).toBe("user_persist");
     await second.close();

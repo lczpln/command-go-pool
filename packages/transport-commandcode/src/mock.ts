@@ -41,7 +41,12 @@ export class MockTransport implements CommandCodeTransport {
     return { ok: true, message: "Authentication successful", models: scenario.models ?? DEFAULT_MODELS };
   }
 
-  async getAccountStatus(account: AccountCredential): Promise<AccountStatusSnapshot> {
+  async getAccountStatus(account: AccountCredential, signal?: AbortSignal): Promise<AccountStatusSnapshot> {
+    if (signal?.aborted) {
+      const error = new Error("The operation was aborted");
+      error.name = "AbortError";
+      throw error;
+    }
     const scenario = this.scenario(account);
     return {
       authenticated: !scenario.failAuth,

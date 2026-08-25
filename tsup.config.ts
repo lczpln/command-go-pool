@@ -4,19 +4,17 @@ import { fileURLToPath } from "node:url";
 
 const root = dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
-  entry: { cli: "packages/cli/src/index.ts" },
-  format: ["esm"],
-  platform: "node",
+const shared = {
+  format: ["esm"] as "esm"[],
+  platform: "node" as const,
   target: "node20",
   sourcemap: true,
   clean: false,
   splitting: false,
   dts: false,
-  banner: { js: "#!/usr/bin/env node" },
   noExternal: [/@command-go-pool\//],
-  external: ["better-sqlite3", "keytar"],
-  esbuildOptions(options) {
+  external: ["better-sqlite3", "keytar", "undici"],
+  esbuildOptions(options: { alias?: Record<string, string> }) {
     options.alias = {
       "@command-go-pool/shared": resolve(root, "packages/shared/src/index.ts"),
       "@command-go-pool/storage": resolve(root, "packages/storage/src/index.ts"),
@@ -30,4 +28,16 @@ export default defineConfig({
       "@command-go-pool/server": resolve(root, "packages/server/src/index.ts"),
     };
   },
-});
+};
+
+export default defineConfig([
+  {
+    ...shared,
+    entry: { cli: "packages/cli/src/index.ts" },
+    banner: { js: "#!/usr/bin/env node" },
+  },
+  {
+    ...shared,
+    entry: { "sqlite-worker": "packages/storage/src/sqlite-worker.ts" },
+  },
+]);

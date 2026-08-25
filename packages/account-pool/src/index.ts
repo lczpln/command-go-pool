@@ -8,10 +8,11 @@ export class AccountPool {
   private rr = 0;
 
   constructor(
-    private readonly repo: AccountRepo,
+    private readonly repo: Pick<AccountRepo, "list" | "upsert" | "remove">,
     private readonly secrets: SecretStore,
+    initialAccounts?: Account[],
   ) {
-    for (const account of repo.list()) this.accounts.set(account.id, account);
+    for (const account of initialAccounts ?? repo.list()) this.accounts.set(account.id, account);
   }
 
   list(): Account[] {

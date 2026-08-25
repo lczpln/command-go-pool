@@ -1,8 +1,18 @@
-import Database from "better-sqlite3";
+import { createRequire } from "node:module";
 import { chmodSync } from "node:fs";
+import type BetterSqlite3 from "better-sqlite3";
 import { ensureHome, paths } from "./paths.js";
 
-const MIGRATIONS: { name: string; sql?: string; run?: (db: Database.Database) => void }[] = [
+type SqliteConstructor = {
+  new (filename: string, options?: BetterSqlite3.Options): BetterSqlite3.Database;
+};
+
+function loadSqlite(modulePath?: string): SqliteConstructor {
+  const require = createRequire(modulePath ?? import.meta.url);
+  return require(modulePath ?? "better-sqlite3") as SqliteConstructor;
+}
+
+const MIGRATIONS: { name: string; sql?: string; run?: (db: BetterSqlite3.Database) => void }[] = [
   {
     name: "001_init",
     sql: `
@@ -106,7 +116,8 @@ const MIGRATIONS: { name: string; sql?: string; run?: (db: Database.Database) =>
   },
 ];
 
-export function openDatabase(home?: string): Database.Database {
+export function openDatabase(home?: string, sqlite3Path?: string): BetterSqlite3.Database {
+  const Database = loadSqlite(sqlite3Path);
   const dir = ensureHome(home);
   const dbPath = paths(dir).db;
   const db = new Database(dbPath);

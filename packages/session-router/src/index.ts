@@ -14,7 +14,7 @@ export interface RouteDecision {
 export class SessionRouter {
   constructor(
     private readonly pool: AccountPool,
-    private readonly sessions: SessionRepo,
+    private readonly sessions: Pick<SessionRepo, "get" | "upsert" | "bind">,
     private readonly opts: { ttlMs: number; loadWeight: number; defaultMode: RoutingMode },
   ) {}
 

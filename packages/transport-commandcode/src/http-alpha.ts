@@ -5,6 +5,7 @@
  * `/alpha/billing/*`) plus the public model catalog. Nothing outside this
  * package should import these URLs or the Vercel AI SDK envelope.
  */
+import { Agent, fetch as undiciFetch } from "undici";
 import type {
   AccountCredential,
   AccountStatusSnapshot,
@@ -20,6 +21,8 @@ import type {
 import { classifyUpstreamError, failure } from "@command-go-pool/shared";
 import { planById, planByWindowCaps } from "@command-go-pool/quota-engine";
 
+type RequestKind = "generate" | "health";
+
 export interface HttpAlphaOptions {
   apiBase: string;
   cliVersion: string;
@@ -29,6 +32,10 @@ export interface HttpAlphaOptions {
 }
 
 export class HttpAlphaTransport implements CommandCodeTransport {
+  readonly generateAgent = new Agent({ connections: 8, pipelining: 1 });
+  readonly healthAgent = new Agent({ connections: 2, pipelining: 1 });
+  lastRequestKind?: RequestKind;
+
   constructor(private readonly opts: HttpAlphaOptions) {}
 
   async listModels(account: AccountCredential): Promise<ModelInfo[]> {
@@ -51,17 +58,17 @@ export class HttpAlphaTransport implements CommandCodeTransport {
     }
   }
 
-  async getAccountStatus(account: AccountCredential): Promise<AccountStatusSnapshot> {
+  async getAccountStatus(account: AccountCredential, signal?: AbortSignal): Promise<AccountStatusSnapshot> {
     const started = Date.now();
     const timeoutMs = Math.min(this.opts.timeoutMs, 15_000);
     const [whoami, credits, modelsRes] = await Promise.all([
-      this.request(account, "GET", "/alpha/whoami", undefined, undefined, timeoutMs),
-      this.request(account, "GET", "/alpha/billing/credits", undefined, undefined, timeoutMs).catch(() => undefined),
-      this.request(account, "GET", "/provider/v1/models", undefined, undefined, timeoutMs).catch(() => undefined),
+      this.request(account, "GET", "/alpha/whoami", undefined, signal, timeoutMs, "health"),
+      this.request(account, "GET", "/alpha/billing/credits", undefined, signal, timeoutMs, "health").catch(() => undefined),
+      this.request(account, "GET", "/provider/v1/models", undefined, signal, timeoutMs, "health").catch(() => undefined),
     ]);
     const authenticated = whoami.ok;
     let quota = parseCreditsPayload(credits ? await safeJson(credits) : undefined);
-    const subs = await this.request(account, "GET", "/alpha/billing/subscriptions", undefined, undefined, timeoutMs).catch(
+    const subs = await this.request(account, "GET", "/alpha/billing/subscriptions", undefined, signal, timeoutMs, "health").catch(
       () => undefined,
     );
     const sub = parseSubscription(subs ? await safeJson(subs) : undefined);
@@ -79,7 +86,7 @@ export class HttpAlphaTransport implements CommandCodeTransport {
     signal?: AbortSignal,
   ): AsyncIterable<NormalizedChunk> {
     const body = buildEnvelope(request);
-    const res = await this.request(account, "POST", "/alpha/generate", body, signal);
+    const res = await this.request(account, "POST", "/alpha/generate", body, signal, this.opts.timeoutMs, "generate");
     if (!res.ok || !res.body) {
       const text = await res.text();
       yield { type: "error", error: classifyUpstreamError({ status: res.status, bodyText: text }) };
@@ -144,25 +151,32 @@ export class HttpAlphaTransport implements CommandCodeTransport {
     body?: unknown,
     signal?: AbortSignal,
     timeoutMs = this.opts.timeoutMs,
+    kind: RequestKind = "health",
   ): Promise<Response> {
+    this.lastRequestKind = kind;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const onAbort = () => controller.abort();
     signal?.addEventListener("abort", onAbort);
+    const headers = {
+      authorization: `Bearer ${account.apiKey}`,
+      "content-type": "application/json",
+      "x-cli-environment": "production",
+      "x-command-code-version": this.opts.cliVersion,
+      "x-session-id": account.accountId,
+    };
+    const init = {
+      method,
+      signal: controller.signal,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    };
     try {
-      const fetchImpl = this.opts.fetchImpl ?? fetch;
-      return await fetchImpl(`${this.opts.apiBase}${path}`, {
-        method,
-        signal: controller.signal,
-        headers: {
-          authorization: `Bearer ${account.apiKey}`,
-          "content-type": "application/json",
-          "x-cli-environment": "production",
-          "x-command-code-version": this.opts.cliVersion,
-          "x-session-id": account.accountId,
-        },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
+      if (this.opts.fetchImpl) {
+        return await this.opts.fetchImpl(`${this.opts.apiBase}${path}`, init);
+      }
+      const dispatcher = kind === "generate" ? this.generateAgent : this.healthAgent;
+      return (await undiciFetch(`${this.opts.apiBase}${path}`, { ...init, dispatcher })) as unknown as Response;
     } catch (error) {
       if (signal?.aborted) throw error;
       throw error;

@@ -18,6 +18,7 @@ try {
 
   const required = [
     "package/dist/cli.js",
+    "package/dist/sqlite-worker.js",
     "package/dist/dashboard/index.html",
     "package/package.json",
     "package/README.md",
