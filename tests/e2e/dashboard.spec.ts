@@ -102,16 +102,15 @@ test.describe("dashboard", () => {
     const file = testInfo.outputPath("opencode.json");
     await page.goto("/clients");
     await expect(page.getByRole("heading", { name: "Clients" })).toBeVisible();
-    await expect(page.getByText("OpenCode")).toBeVisible();
-    await expect(page.getByText("Claude Code")).toBeVisible();
-    const card = page.locator("article").filter({ hasText: "OpenCode" });
-    await expect(card.getByRole("button", { name: "Connect" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "OpenCode" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Claude Code" })).toBeVisible();
+    const card = page.locator("article").filter({ has: page.getByRole("heading", { name: "OpenCode" }) });
     const connected = await page.request.post("/api/clients/opencode/connect", { data: { file } });
     expect(connected.ok()).toBeTruthy();
     await page.reload();
     await expect(card.getByText("CONNECTED")).toBeVisible();
     await card.getByRole("button", { name: "Disconnect" }).click();
-    await expect(card.getByText("CONNECTED")).toHaveCount(0);
+    await expect(card.getByRole("button", { name: "Connect" })).toBeVisible();
   });
 });
 
