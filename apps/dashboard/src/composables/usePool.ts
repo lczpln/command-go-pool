@@ -55,6 +55,16 @@ export interface CatalogModel {
   aliasOf?: string;
 }
 
+export interface ClientTarget {
+  id: string;
+  name: string;
+  file: string;
+  connected: boolean;
+  ok?: boolean;
+  synced?: boolean;
+  message?: string;
+}
+
 export const store = reactive({
   overview: null as null | Record<string, unknown>,
   accounts: [] as Account[],
@@ -63,6 +73,7 @@ export const store = reactive({
   events: [] as Array<{ id: number; at: string; level: string; category: string; type: string; payload: Record<string, unknown> }>,
   config: null as null | Record<string, unknown>,
   models: [] as CatalogModel[],
+  clients: [] as ClientTarget[],
   connected: false,
   ready: false,
 });
@@ -125,12 +136,19 @@ export async function patchModel(id: string, body: { enabled: boolean }) {
   await refreshAll();
 }
 
-export async function syncOpenCode() {
-  const result = await json<{ ok: boolean; file: string; message: string; models: string[]; warning?: string }>("/api/setup/opencode", {
+export async function syncClients() {
+  const result = await json<{
+    ok: boolean;
+    message: string;
+    models: string[];
+    warning?: string;
+    clients: ClientTarget[];
+  }>("/api/setup/clients", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({}),
   });
+  store.clients = result.clients;
   return result;
 }
 
@@ -144,7 +162,7 @@ export async function fetchUsage(filter?: { accountId?: string; model?: string; 
 }
 
 export async function refreshAll() {
-  const [health, accounts, sessions, usage, events, config, models] = await Promise.all([
+  const [health, accounts, sessions, usage, events, config, models, clients] = await Promise.all([
     json<Record<string, unknown>>("/api/health"),
     json<{ accounts: Account[] }>("/api/accounts"),
     json<{ sessions: Session[] }>("/api/sessions"),
@@ -152,6 +170,7 @@ export async function refreshAll() {
     json<{ events: typeof store.events }>("/api/events"),
     json<{ config: Record<string, unknown> }>("/api/config"),
     json<{ models: CatalogModel[] }>("/api/models"),
+    json<{ clients: ClientTarget[] }>("/api/setup/clients").catch(() => ({ clients: [] as ClientTarget[] })),
   ]);
   store.overview = health;
   store.accounts = accounts.accounts;
@@ -160,6 +179,7 @@ export async function refreshAll() {
   store.events = events.events;
   store.config = config.config;
   store.models = models.models;
+  store.clients = clients.clients;
   store.ready = true;
 }
 

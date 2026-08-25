@@ -1,6 +1,11 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 import { displayNameForModel, OPENCODE_FALLBACK_MODELS } from "./models.js";
+
+export function openCodeConfigPath(env: NodeJS.ProcessEnv = process.env): string {
+  return env.OPENCODE_CONFIG ?? join(homedir(), ".config/opencode/opencode.json");
+}
 
 export interface OpenCodeModelInput {
   id: string;

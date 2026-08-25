@@ -33,6 +33,8 @@ Same auth rules. Never includes credential material.
 | POST | `/api/accounts/:id/test` |
 | GET | `/api/models` | Pool catalog: `{ id, enabled, accountIds[], aliasOf? }` |
 | PATCH | `/api/models` | Body `{ id, enabled }`. Persists `config.models.disabled`. |
+| GET | `/api/setup/clients` | Lists compatible clients and whether their config files exist. |
+| POST | `/api/setup/clients` | Writes currently enabled models to every connected client config (OpenCode `opencode.json`, Claude Code settings). Optional body `{ files, baseUrl }`. |
 | POST | `/api/setup/opencode` | Writes `opencode.json` with currently enabled models. Optional body `{ file, baseUrl }`. |
 | GET | `/api/sessions` |
 | GET | `/api/sessions/:id` |

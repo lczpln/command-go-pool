@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { store, patchModel, syncOpenCode, type CatalogModel } from "../composables/usePool";
+import { store, patchModel, syncClients, type CatalogModel } from "../composables/usePool";
 import ModelRow from "../components/ModelRow.vue";
 import Skeleton from "../components/Skeleton.vue";
 
@@ -11,6 +11,12 @@ const syncResult = ref<{ ok: boolean; message: string } | null>(null);
 const canonical = computed(() => store.models.filter((m) => !m.aliasOf));
 const aliases = computed(() => store.models.filter((m) => m.aliasOf));
 const enabledCount = computed(() => store.models.filter((m) => m.enabled).length);
+const connectedClients = computed(() => store.clients.filter((client) => client.connected));
+const clientHint = computed(() => {
+  if (!store.ready) return "Writes enabled models to connected client configs";
+  if (connectedClients.value.length === 0) return "No connected clients yet";
+  return `Writes enabled models to ${connectedClients.value.map((client) => client.name).join(", ")}`;
+});
 
 function accountLabel(id: string) {
   return store.accounts.find((a) => a.id === id)?.label ?? id;
@@ -33,10 +39,15 @@ async function sync() {
   syncing.value = true;
   syncResult.value = null;
   try {
-    const result = await syncOpenCode();
+    const result = await syncClients();
+    const detail = result.clients
+      .filter((client) => client.connected && client.message)
+      .map((client) => client.message)
+      .join("\n");
+    const parts = [result.message, result.warning, detail].filter(Boolean);
     syncResult.value = {
-      ok: true,
-      message: result.warning ? `${result.message}\n${result.warning}` : result.message,
+      ok: result.ok,
+      message: parts.join("\n"),
     };
   } catch (error) {
     syncResult.value = { ok: false, message: error instanceof Error ? error.message : "Sync failed" };
@@ -67,9 +78,9 @@ async function sync() {
         :disabled="syncing"
         @click="sync"
       >
-        {{ syncing ? "Syncing…" : "Sync OpenCode" }}
+        {{ syncing ? "Syncing…" : "Sync with clients" }}
       </button>
-      <p class="font-mono text-[11px] text-mist">Writes enabled models to opencode.json</p>
+      <p class="font-mono text-[11px] text-mist">{{ clientHint }}</p>
     </section>
     <p v-if="syncResult" class="whitespace-pre-wrap font-mono text-[12px]" :class="syncResult.ok ? 'text-ok' : 'text-bad'">
       {{ syncResult.message }}

@@ -2,10 +2,18 @@ import { parseAppConfig } from "@command-go-pool/shared";
 import { MockTransport } from "@command-go-pool/transport-commandcode";
 import { boot } from "@command-go-pool/server";
 import type { AccountQuota } from "@command-go-pool/shared";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 const home = process.env.COMMAND_GO_POOL_HOME ?? "/tmp/command-go-pool-demo";
 process.env.COMMAND_GO_POOL_MASTER_KEY ??= "demo-master-key-not-for-production!!";
 process.env.COMMAND_GO_POOL_HOME = home;
+mkdirSync(home, { recursive: true });
+const demoOpenCode = join(home, "opencode.json");
+const demoClaude = join(home, "claude-settings.json");
+process.env.OPENCODE_CONFIG ??= demoOpenCode;
+if (!existsSync(demoOpenCode)) writeFileSync(demoOpenCode, "{}\n");
+if (!existsSync(demoClaude)) writeFileSync(demoClaude, "{}\n");
 
 const transport = new MockTransport();
 const instance = await boot({

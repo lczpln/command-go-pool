@@ -4,7 +4,7 @@
 command-go-pool setup claude
 ```
 
-Writes `~/.command-go-pool/claude-settings.json` after confirmation. It only sets `ANTHROPIC_*` for the pool and does not modify your global Claude environment. `ANTHROPIC_API_KEY` is the generated pool key (`cgp_…`), not `pool-managed` and not a Command Code `user_…` key.
+Writes `~/.command-go-pool/claude-settings.json` after confirmation. It only sets `ANTHROPIC_*` for the pool and does not modify your global Claude environment. `ANTHROPIC_API_KEY` is the generated pool key (`cgp_…`), not `pool-managed` and not a Command Code `user_…` key. After toggling models on the dashboard, **Sync with clients** rewrites the default Sonnet/Opus/Haiku ids in this file if it exists.
 
 ```bash
 claude --settings ~/.command-go-pool/claude-settings.json

@@ -1,7 +1,6 @@
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
 import { existsSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openaiChatSchema, openaiToNormalized, openaiChunkFrame, openaiFinal } from "@command-go-pool/protocol-openai";
@@ -15,11 +14,15 @@ import {
 import {
   OPENCODE_FALLBACK_MODELS,
   catalogModels,
+  clientHost,
   exposedInferenceModels,
   isLoopbackHost,
   isModelEnabled,
+  listClientTargets,
   newId,
+  openCodeConfigPath,
   setModelEnabled,
+  syncConnectedClients,
   writeOpenCodeConfig,
   type AppConfig,
 } from "@command-go-pool/shared";
@@ -31,7 +34,7 @@ import {
   openCodeUsage,
   type ClientQuota,
 } from "@command-go-pool/quota-engine";
-import { saveConfig } from "@command-go-pool/storage";
+import { dataHome, saveConfig } from "@command-go-pool/storage";
 import { emit, executeRequest, overview, type Runtime } from "./runtime.js";
 import { mergeQuota } from "./health.js";
 
@@ -86,6 +89,18 @@ function sseHead(quota: ClientQuota): Record<string, string> {
     connection: "keep-alive",
     ...clientUsageHeaders(quota),
   };
+}
+
+function poolOrigin(runtime: Runtime): string {
+  return `http://${clientHost(runtime.config.server.host)}:${runtime.config.server.port}`;
+}
+
+function modelsForClientSync(runtime: Runtime) {
+  const enabled = catalogModels(runtime.pool.list(), runtime.config)
+    .filter((model) => model.enabled)
+    .map((model) => ({ id: model.id, aliasOf: model.aliasOf }));
+  const fallback = enabled.length === 0;
+  return { models: fallback ? OPENCODE_FALLBACK_MODELS : enabled, fallback };
 }
 
 export async function buildApp(runtime: Runtime) {
@@ -483,15 +498,40 @@ export async function buildApp(runtime: Runtime) {
     return { models: catalogModels(runtime.pool.list(), runtime.config) };
   });
 
+  app.get("/api/setup/clients", async () => ({
+    clients: listClientTargets({ home: dataHome() }),
+  }));
+
+  app.post("/api/setup/clients", async (req) => {
+    const body = (req.body ?? {}) as { files?: { opencode?: string; claude?: string }; baseUrl?: string };
+    const origin = body.baseUrl?.trim()?.replace(/\/v1\/?$/, "") || poolOrigin(runtime);
+    const { models, fallback } = modelsForClientSync(runtime);
+    const result = syncConnectedClients({
+      home: dataHome(),
+      origin,
+      apiKey: runtime.config.server.apiKey,
+      models,
+      paths: body.files,
+    });
+    const names = result.synced.map((client) => client.name);
+    const failed = result.clients.filter((client) => client.connected && !client.ok);
+    const ok = result.synced.length > 0 && failed.length === 0;
+    return {
+      ok,
+      clients: result.clients,
+      models: models.map((model) => model.id),
+      message: names.length
+        ? `Synced ${names.join(", ")}`
+        : "No connected clients. Run command-go-pool setup opencode or setup claude first.",
+      warning: fallback && names.length ? "No enabled models in the pool; wrote fallback catalog." : undefined,
+    };
+  });
+
   app.post("/api/setup/opencode", async (req) => {
     const body = (req.body ?? {}) as { file?: string; baseUrl?: string };
-    const file = body.file?.trim() || process.env.OPENCODE_CONFIG || join(homedir(), ".config/opencode/opencode.json");
-    const baseUrl = body.baseUrl?.trim() || `http://${runtime.config.server.host}:${runtime.config.server.port}/v1`;
-    const enabled = catalogModels(runtime.pool.list(), runtime.config)
-      .filter((model) => model.enabled)
-      .map((model) => ({ id: model.id }));
-    const fallback = enabled.length === 0;
-    const models = fallback ? OPENCODE_FALLBACK_MODELS : enabled;
+    const file = body.file?.trim() || openCodeConfigPath();
+    const baseUrl = body.baseUrl?.trim() || `${poolOrigin(runtime)}/v1`;
+    const { models, fallback } = modelsForClientSync(runtime);
     const message = writeOpenCodeConfig({
       baseUrl,
       file,

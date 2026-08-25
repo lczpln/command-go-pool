@@ -250,7 +250,7 @@ With the pool running, open [http://127.0.0.1:8787](http://127.0.0.1:8787).
 | --- | --- |
 | Overview | Pool health, quota bars, live account mix |
 | Accounts | Paste Studio keys, inspect, test, enable/disable |
-| Models | Toggle which model ids the pool exposes; Sync OpenCode |
+| Models | Toggle which model ids the pool exposes; Sync with clients |
 | Sessions | Sticky bindings, migrations, token usage |
 | Usage | Request/cost rollups over time |
 | Events | Live stream of cooldowns, failovers, errors |
@@ -383,7 +383,7 @@ This command:
 
 Select **Command Go Pool** in the OpenCode model picker.
 
-The picker does **not** poll `/v1/models`. After toggling models on the dashboard, run setup again or use **Sync OpenCode** on the Models page.
+The picker does **not** poll `/v1/models`. After toggling models on the dashboard, run setup again or use **Sync with clients** on the Models page (updates every connected client config, including OpenCode).
 
 Manual provider (model ids come from the pool):
 
