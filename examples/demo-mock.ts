@@ -1,11 +1,18 @@
-import { parseAppConfig } from "@command-go-pool/shared";
+import { connectClient, parseAppConfig } from "@command-go-pool/shared";
 import { MockTransport } from "@command-go-pool/transport-commandcode";
 import { boot } from "@command-go-pool/server";
 import type { AccountQuota } from "@command-go-pool/shared";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { saveConfig } from "@command-go-pool/storage";
 
 const home = process.env.COMMAND_GO_POOL_HOME ?? "/tmp/command-go-pool-demo";
 process.env.COMMAND_GO_POOL_MASTER_KEY ??= "demo-master-key-not-for-production!!";
 process.env.COMMAND_GO_POOL_HOME = home;
+mkdirSync(home, { recursive: true });
+const demoOpenCode = join(home, "opencode.json");
+const demoClaude = join(home, "command-go-pool.json");
+process.env.OPENCODE_CONFIG ??= demoOpenCode;
 
 const transport = new MockTransport();
 const instance = await boot({
@@ -125,6 +132,22 @@ if (ids[0] && !instance.runtime.sessions.get("ses_demo")) {
     payload: { sessionId: "ses_demo", from: ids[3] ?? ids[0], to: ids[0], reason: "quota_exhausted" },
   });
 }
+
+let config = instance.runtime.config;
+config = (
+  await connectClient("opencode", config, {
+    file: demoOpenCode,
+    models: [
+      { id: "deepseek/deepseek-v4-flash" },
+      { id: "deepseek/deepseek-v4-flash-vision-exp" },
+      { id: "deepseek/deepseek-v4-pro" },
+    ],
+    apiKey: config.server.apiKey,
+  })
+).config;
+config = (await connectClient("claude", config, { file: demoClaude, apiKey: config.server.apiKey })).config;
+Object.assign(instance.runtime.config, config);
+saveConfig(config, home);
 
 await instance.listen();
 console.log(`Demo mock pool http://127.0.0.1:${instance.runtime.config.server.port}`);

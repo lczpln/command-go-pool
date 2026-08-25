@@ -72,6 +72,16 @@ export function disconnectClient(
   return { config: withConnected(config, id, undefined), result };
 }
 
+export async function syncConnectedClients(config: AppConfig, opts: ConnectOptions = {}): Promise<ClientWriteResult[]> {
+  const results: ClientWriteResult[] = [];
+  for (const [id, entry] of Object.entries(config.clients?.connected ?? {})) {
+    if (!isClientId(id)) continue;
+    const { result } = await connectClient(id, config, { ...opts, file: entry?.file });
+    results.push(result);
+  }
+  return results;
+}
+
 export function syncConnectedClientKeys(config: AppConfig, apiKey?: string): ClientWriteResult[] {
   const updated: ClientWriteResult[] = [];
   for (const id of Object.keys(config.clients?.connected ?? {})) {

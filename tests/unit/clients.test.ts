@@ -11,6 +11,8 @@ import {
   isPoolApiKeyFormat,
   claudeAdapter,
   opencodeAdapter,
+  pickClaudeModelDefaults,
+  syncConnectedClients,
 } from "@command-go-pool/shared";
 
 describe("pool API key", () => {
@@ -105,5 +107,65 @@ describe("client adapters", () => {
     const detected = claudeAdapter.detect({ homedir: home, path: "", env: { HOME: home, PATH: "" } });
     expect(detected.installed).toBe(true);
     expect(detected.configPath).toBe(join(claudeDir, "command-go-pool.json"));
+  });
+});
+
+describe("client catalog sync", () => {
+  it("picks haiku/sonnet/opus from the enabled catalog", () => {
+    expect(
+      pickClaudeModelDefaults([
+        { id: "deepseek/deepseek-v4-flash" },
+        { id: "deepseek/deepseek-v4-pro" },
+        { id: "pro", aliasOf: "deepseek/deepseek-v4-pro" },
+      ]),
+    ).toEqual({
+      sonnet: "deepseek/deepseek-v4-pro",
+      opus: "deepseek/deepseek-v4-pro",
+      haiku: "deepseek/deepseek-v4-flash",
+    });
+  });
+
+  it("syncs enabled models only to connected clients", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "cgp-clients-sync-"));
+    const opencode = join(dir, "opencode.json");
+    const claude = join(dir, "command-go-pool.json");
+    writeFileSync(opencode, JSON.stringify({ provider: { anthropic: { name: "Anthropic" } } }));
+    writeFileSync(claude, JSON.stringify({ env: { KEEP_ME: "yes", ANTHROPIC_DEFAULT_HAIKU_MODEL: "flash" } }));
+    let config = parseAppConfig({ server: { host: "127.0.0.1", port: 8787, apiKey: "cgp_sync" } });
+    config = (await connectClient("opencode", config, { file: opencode, models: [{ id: "deepseek/deepseek-v4-flash" }] })).config;
+    const skipped = await syncConnectedClients(config, {
+      models: [{ id: "deepseek/deepseek-v4-flash" }, { id: "deepseek/deepseek-v4-pro" }],
+      apiKey: "cgp_sync",
+    });
+    expect(skipped.map((row) => row.id)).toEqual(["opencode"]);
+    expect(JSON.parse(readFileSync(claude, "utf8")).env.KEEP_ME).toBe("yes");
+    const oc = JSON.parse(readFileSync(opencode, "utf8")) as {
+      provider: { "command-go-pool": { models: Record<string, unknown> }; anthropic?: unknown };
+    };
+    expect(oc.provider.anthropic).toBeTruthy();
+    expect(oc.provider["command-go-pool"].models["deepseek/deepseek-v4-pro"]).toBeTruthy();
+
+    config = (
+      await connectClient("claude", config, {
+        file: claude,
+        models: [
+          { id: "deepseek/deepseek-v4-flash" },
+          { id: "flash", aliasOf: "deepseek/deepseek-v4-flash" },
+        ],
+        apiKey: "cgp_sync",
+      })
+    ).config;
+    const both = await syncConnectedClients(config, {
+      models: [
+        { id: "deepseek/deepseek-v4-flash" },
+        { id: "flash", aliasOf: "deepseek/deepseek-v4-flash" },
+      ],
+      apiKey: "cgp_sync",
+    });
+    expect(both.map((row) => row.id).sort()).toEqual(["claude", "opencode"]);
+    const cc = JSON.parse(readFileSync(claude, "utf8")) as { env: Record<string, string> };
+    expect(cc.env.KEEP_ME).toBe("yes");
+    expect(cc.env.ANTHROPIC_DEFAULT_HAIKU_MODEL).toBe("flash");
+    expect(cc.env.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe("deepseek/deepseek-v4-flash");
   });
 });

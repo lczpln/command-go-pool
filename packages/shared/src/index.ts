@@ -25,13 +25,16 @@ export {
   connectClient,
   disconnectClient,
   syncConnectedClientKeys,
+  syncConnectedClients,
   rotatePoolApiKey,
   markClientsOnboarded,
   poolOrigin,
   poolOpenAiUrl,
   loopbackHost,
+  pickClaudeModelDefaults,
+  CLAUDE_FALLBACK_DEFAULTS,
 } from "./clients/index.js";
-export type { ClientId, ClientAdapter, ClientStatus, ClientWriteResult, ConnectOptions, DetectEnv } from "./clients/index.js";
+export type { ClientId, ClientAdapter, ClientStatus, ClientWriteResult, ConnectOptions, DetectEnv, ClaudeModelDefaults } from "./clients/index.js";
 export {
   OPENCODE_FALLBACK_MODELS,
   isModelEnabled,
@@ -41,7 +44,7 @@ export {
   exposedInferenceModels,
 } from "./models.js";
 export type { CatalogEntry, ModelPolicyConfig } from "./models.js";
-export { writeOpenCodeConfig, fetchPoolModels } from "./opencode.js";
+export { writeOpenCodeConfig, fetchPoolModels, openCodeConfigPath } from "./opencode.js";
 export type { OpenCodeModelInput, WriteOpenCodeOptions } from "./opencode.js";
 export { ERROR_POLICIES, policyFor, failure, classifyUpstreamError, parseResetTime } from "./errors.js";
 export { newId, sha256, fingerprintSession, identifySession } from "./session.js";

@@ -6,7 +6,7 @@ command-go-pool client connect claude
 command-go-pool setup claude
 ```
 
-Writes `~/.claude/command-go-pool.json`. It only sets `ANTHROPIC_*` for the pool and does **not** modify `~/.claude/settings.json` (that file is user-global and would hijack every Claude session).
+Writes `~/.claude/command-go-pool.json`. It only sets `ANTHROPIC_*` for the pool and does **not** modify `~/.claude/settings.json` (that file is user-global and would hijack every Claude session). After toggling models on the dashboard, **Sync with clients** rewrites the default Sonnet/Opus/Haiku ids in this file if the client is connected.
 
 ```bash
 claude --settings ~/.claude/command-go-pool.json

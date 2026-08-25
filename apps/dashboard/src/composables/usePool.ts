@@ -160,12 +160,19 @@ export async function patchModel(id: string, body: { enabled: boolean }) {
   await refreshAll();
 }
 
-export async function syncOpenCode() {
-  const result = await json<{ ok: boolean; file: string; message: string; models: string[]; warning?: string }>("/api/setup/opencode", {
+export async function syncClients() {
+  const result = await json<{
+    ok: boolean;
+    message: string;
+    models: string[];
+    warning?: string;
+    clients: Array<{ id: string; name: string; file: string; ok: boolean; synced: boolean; message?: string }>;
+  }>("/api/clients/sync", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({}),
   });
+  await refreshAll();
   return result;
 }
 

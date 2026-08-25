@@ -43,15 +43,19 @@ test.describe("dashboard", () => {
   test("disable a model hides it from GET /v1/models", async ({ page, request }) => {
     await page.goto("/models");
     await expect(page.getByRole("heading", { name: "Models" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sync with clients" })).toBeVisible();
     const row = page.locator("article").filter({ hasText: "deepseek/deepseek-v4-pro" }).first();
+    await expect(row.getByRole("switch")).toHaveAttribute("aria-checked", "true");
     await expect(row.getByText("ENABLED")).toBeVisible();
-    await row.getByRole("button", { name: "Disable" }).click();
+    await row.getByRole("switch").click();
+    await expect(row.getByRole("switch")).toHaveAttribute("aria-checked", "false");
     await expect(row.getByText("DISABLED")).toBeVisible();
     const hidden = await request.get("/v1/models");
     const hiddenIds = ((await hidden.json()) as { data: Array<{ id: string }> }).data.map((row) => row.id);
     expect(hiddenIds).not.toContain("deepseek/deepseek-v4-pro");
     expect(hiddenIds).not.toContain("pro");
-    await row.getByRole("button", { name: "Enable" }).click();
+    await row.getByRole("switch").click();
+    await expect(row.getByRole("switch")).toHaveAttribute("aria-checked", "true");
     await expect(row.getByText("ENABLED")).toBeVisible();
   });
 

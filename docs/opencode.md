@@ -15,7 +15,7 @@ This command:
 5. Leaves other providers in place
 6. Prints the path and the keys it changed
 
-The dashboard **Models** page can rewrite the same file with **Sync OpenCode** after you enable or disable models. OpenCode itself does not poll `/v1/models`; re-run setup (or Sync) whenever the catalog changes.
+The dashboard **Models** page can rewrite the same file with **Sync with clients** after you enable or disable models. That action updates every connected client (OpenCode, Claude Code, …). OpenCode itself does not poll `/v1/models`; re-run setup (or Sync) whenever the catalog changes.
 
 If you prefer to edit by hand, see the README example.
 

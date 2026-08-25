@@ -41,7 +41,7 @@ A pool API key is optional. If you set one, admin and inference routes then requ
 
 `setup opencode` writes `~/.config/opencode/opencode.json` and keeps unrelated providers. If your OpenCode version uses another path, set `OPENCODE_CONFIG`. A `.bak.<timestamp>` copy is created first.
 
-The OpenCode picker does not poll `GET /v1/models`. After toggling models in the dashboard, run `command-go-pool setup opencode` again or use **Sync OpenCode** on the Models page.
+The OpenCode picker does not poll `GET /v1/models`. After toggling models in the dashboard, run `command-go-pool setup opencode` again or use **Sync with clients** on the Models page.
 
 ## Upstream protocol drift
 

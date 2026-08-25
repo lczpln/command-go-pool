@@ -1,7 +1,6 @@
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
 import { existsSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openaiChatSchema, openaiToNormalized, openaiChunkFrame, openaiFinal } from "@command-go-pool/protocol-openai";
@@ -15,18 +14,21 @@ import {
 import {
   OPENCODE_FALLBACK_MODELS,
   catalogModels,
+  connectClient,
+  defaultOpenCodeFile,
+  disconnectClient,
   exposedInferenceModels,
+  getClientAdapter,
+  isClientId,
   isLoopbackHost,
   isModelEnabled,
-  newId,
-  setModelEnabled,
-  writeOpenCodeConfig,
-  connectClient,
-  disconnectClient,
   listClientStatuses,
+  newId,
   rotatePoolApiKey,
-  isClientId,
+  setModelEnabled,
   syncConnectedClientKeys,
+  syncConnectedClients,
+  writeOpenCodeConfig,
   type AppConfig,
 } from "@command-go-pool/shared";
 import {
@@ -485,7 +487,7 @@ export async function buildApp(runtime: Runtime) {
   function enabledClientModels() {
     const enabled = catalogModels(runtime.pool.list(), runtime.config)
       .filter((model) => model.enabled)
-      .map((model) => ({ id: model.id }));
+      .map((model) => ({ id: model.id, aliasOf: model.aliasOf }));
     const fallback = enabled.length === 0;
     return { models: fallback ? OPENCODE_FALLBACK_MODELS : enabled, fallback };
   }
@@ -496,6 +498,31 @@ export async function buildApp(runtime: Runtime) {
   }
 
   app.get("/api/clients", async () => ({ clients: listClientStatuses(runtime.config) }));
+
+  app.post("/api/clients/sync", async () => {
+    const { models, fallback } = enabledClientModels();
+    const results = await syncConnectedClients(runtime.config, { models, apiKey: runtime.config.server.apiKey });
+    const okRows = results.filter((row) => row.ok);
+    const names = okRows.map((row) => getClientAdapter(row.id)?.name ?? row.id);
+    const failed = results.some((row) => !row.ok);
+    return {
+      ok: okRows.length > 0 && !failed,
+      clients: results.map((row) => ({
+        id: row.id,
+        name: getClientAdapter(row.id)?.name ?? row.id,
+        file: row.file,
+        connected: true,
+        ok: row.ok,
+        synced: row.ok,
+        message: row.message,
+      })),
+      models: models.map((model) => model.id),
+      message: names.length
+        ? `Synced ${names.join(", ")}`
+        : "No connected clients. Connect OpenCode or Claude Code first.",
+      warning: fallback && names.length ? "No enabled models in the pool; wrote fallback catalog." : undefined,
+    };
+  });
 
   app.post("/api/clients/:id/connect", async (req, reply) => {
     const id = (req.params as { id: string }).id;
@@ -526,7 +553,7 @@ export async function buildApp(runtime: Runtime) {
 
   app.post("/api/setup/opencode", async (req) => {
     const body = (req.body ?? {}) as { file?: string; baseUrl?: string };
-    const file = body.file?.trim() || process.env.OPENCODE_CONFIG || join(homedir(), ".config/opencode/opencode.json");
+    const file = body.file?.trim() || defaultOpenCodeFile();
     const { models, fallback } = enabledClientModels();
     if (body.baseUrl?.trim()) {
       const message = writeOpenCodeConfig({

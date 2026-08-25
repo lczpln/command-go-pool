@@ -2,14 +2,46 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "
 import { dirname, join } from "node:path";
 import { clientApiKey } from "../pool-key.js";
 import type { AppConfig } from "../config.js";
+import type { OpenCodeModelInput } from "../opencode.js";
 import { backupFile, binaryOnPath, connectedFile, poolOrigin, resolveHome } from "./paths.js";
 import type { ClientAdapter, ClientWriteResult, ConnectOptions, DetectEnv } from "./types.js";
 
-const CLAUDE_ENV = {
-  ANTHROPIC_DEFAULT_SONNET_MODEL: "deepseek/deepseek-v4-pro",
-  ANTHROPIC_DEFAULT_OPUS_MODEL: "deepseek/deepseek-v4-pro",
-  ANTHROPIC_DEFAULT_HAIKU_MODEL: "deepseek/deepseek-v4-flash",
+export const CLAUDE_FALLBACK_DEFAULTS = {
+  sonnet: "deepseek/deepseek-v4-pro",
+  opus: "deepseek/deepseek-v4-pro",
+  haiku: "deepseek/deepseek-v4-flash",
 } as const;
+
+export interface ClaudeModelDefaults {
+  sonnet: string;
+  opus: string;
+  haiku: string;
+}
+
+export function pickClaudeModelDefaults(
+  models: OpenCodeModelInput[],
+  current?: Partial<ClaudeModelDefaults>,
+): ClaudeModelDefaults {
+  const ids = models.map((model) => model.id);
+  const enabled = new Set(ids);
+  const canonical = models.filter((model) => !model.aliasOf).map((model) => model.id);
+  const pool = canonical.length ? canonical : ids;
+  const keep = (id: string | undefined) => Boolean(id && enabled.has(id));
+  const haiku =
+    (keep(current?.haiku) ? current!.haiku! : undefined) ??
+    pool.find((id) => /flash/i.test(id) && !/vision/i.test(id)) ??
+    pool.find((id) => /flash/i.test(id)) ??
+    pool[0] ??
+    CLAUDE_FALLBACK_DEFAULTS.haiku;
+  const pro =
+    (keep(current?.sonnet) ? current!.sonnet! : undefined) ??
+    pool.find((id) => /pro/i.test(id)) ??
+    pool.find((id) => id !== haiku) ??
+    pool[0] ??
+    CLAUDE_FALLBACK_DEFAULTS.sonnet;
+  const opus = (keep(current?.opus) ? current!.opus! : undefined) ?? pro;
+  return { sonnet: pro, opus, haiku };
+}
 
 export function defaultClaudeDir(env?: DetectEnv): string {
   return env?.env?.CLAUDE_CONFIG_DIR ?? process.env.CLAUDE_CONFIG_DIR ?? join(resolveHome(env), ".claude");
@@ -23,20 +55,26 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
-function claudeSettings(baseUrl: string, apiKey?: string): Record<string, unknown> {
-  return {
-    env: {
-      ANTHROPIC_BASE_URL: baseUrl,
-      ANTHROPIC_API_KEY: clientApiKey(apiKey),
-      ...CLAUDE_ENV,
-    },
-  };
-}
-
-function writeClaudeFile(file: string, baseUrl: string, apiKey?: string): void {
+function writeClaudeFile(file: string, baseUrl: string, apiKey?: string, models?: OpenCodeModelInput[]): void {
   mkdirSync(dirname(file), { recursive: true });
-  if (existsSync(file)) backupFile(file);
-  writeFileSync(file, `${JSON.stringify(claudeSettings(baseUrl, apiKey), null, 2)}\n`);
+  let current: Record<string, unknown> = {};
+  if (existsSync(file)) {
+    backupFile(file);
+    current = asRecord(JSON.parse(readFileSync(file, "utf8")));
+  }
+  const envBlock = asRecord(current.env);
+  const defaults = pickClaudeModelDefaults(models ?? [], {
+    sonnet: typeof envBlock.ANTHROPIC_DEFAULT_SONNET_MODEL === "string" ? envBlock.ANTHROPIC_DEFAULT_SONNET_MODEL : undefined,
+    opus: typeof envBlock.ANTHROPIC_DEFAULT_OPUS_MODEL === "string" ? envBlock.ANTHROPIC_DEFAULT_OPUS_MODEL : undefined,
+    haiku: typeof envBlock.ANTHROPIC_DEFAULT_HAIKU_MODEL === "string" ? envBlock.ANTHROPIC_DEFAULT_HAIKU_MODEL : undefined,
+  });
+  envBlock.ANTHROPIC_BASE_URL = baseUrl;
+  envBlock.ANTHROPIC_API_KEY = clientApiKey(apiKey);
+  envBlock.ANTHROPIC_DEFAULT_SONNET_MODEL = defaults.sonnet;
+  envBlock.ANTHROPIC_DEFAULT_OPUS_MODEL = defaults.opus;
+  envBlock.ANTHROPIC_DEFAULT_HAIKU_MODEL = defaults.haiku;
+  current.env = envBlock;
+  writeFileSync(file, `${JSON.stringify(current, null, 2)}\n`);
 }
 
 export const claudeAdapter: ClientAdapter = {
@@ -57,7 +95,7 @@ export const claudeAdapter: ClientAdapter = {
   },
   connect(config: AppConfig, opts: ConnectOptions = {}): ClientWriteResult {
     const file = opts.file ?? defaultClaudeFile({ homedir: opts.homedir });
-    writeClaudeFile(file, poolOrigin(config), opts.apiKey ?? config.server.apiKey);
+    writeClaudeFile(file, poolOrigin(config), opts.apiKey ?? config.server.apiKey, opts.models);
     return {
       id: "claude",
       ok: true,

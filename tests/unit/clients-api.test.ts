@@ -55,4 +55,27 @@ describe("client and pool key APIs", () => {
     expect(cc.env.ANTHROPIC_API_KEY).toBe(body.apiKey);
     await instance.close();
   });
+
+  it("syncs enabled models to connected CLIs", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "cgp-api-sync-"));
+    const opencode = join(dir, "opencode.json");
+    const claude = join(dir, "command-go-pool.json");
+    const instance = await withServer({
+      setup(_t, add, boot) {
+        const id = add("Go #01");
+        boot.runtime.pool.update(id, {
+          models: ["deepseek/deepseek-v4-flash", "deepseek/deepseek-v4-pro"],
+          status: "available",
+        });
+      },
+    });
+    await instance.app.inject({ method: "POST", url: "/api/clients/opencode/connect", payload: { file: opencode } });
+    await instance.app.inject({ method: "POST", url: "/api/clients/claude/connect", payload: { file: claude } });
+    const synced = await instance.app.inject({ method: "POST", url: "/api/clients/sync" });
+    expect(synced.statusCode).toBe(200);
+    expect(synced.json()).toMatchObject({ ok: true, message: expect.stringContaining("OpenCode") });
+    const oc = JSON.parse(readFileSync(opencode, "utf8")) as { provider: { "command-go-pool": { models: Record<string, unknown> } } };
+    expect(oc.provider["command-go-pool"].models["deepseek/deepseek-v4-pro"]).toBeTruthy();
+    await instance.close();
+  });
 });
