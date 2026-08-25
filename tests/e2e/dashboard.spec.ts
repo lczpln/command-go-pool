@@ -17,7 +17,7 @@ test.describe("dashboard", () => {
 
   test("navigates every primary page", async ({ page }) => {
     await page.goto("/");
-    for (const name of ["Accounts", "Sessions", "Usage", "Events", "Settings"]) {
+    for (const name of ["Accounts", "Models", "Sessions", "Usage", "Events", "Settings"]) {
       await page.getByRole("link", { name, exact: true }).click();
       await expect(page.getByRole("heading", { name })).toBeVisible();
     }
@@ -38,6 +38,21 @@ test.describe("dashboard", () => {
     await expect(card.getByText("DISABLED")).toBeVisible();
     await card.getByRole("button", { name: "Enable" }).click();
     await expect(card.getByText("AVAILABLE")).toBeVisible();
+  });
+
+  test("disable a model hides it from GET /v1/models", async ({ page, request }) => {
+    await page.goto("/models");
+    await expect(page.getByRole("heading", { name: "Models" })).toBeVisible();
+    const row = page.locator("article").filter({ hasText: "deepseek/deepseek-v4-pro" }).first();
+    await expect(row.getByText("ENABLED")).toBeVisible();
+    await row.getByRole("button", { name: "Disable" }).click();
+    await expect(row.getByText("DISABLED")).toBeVisible();
+    const hidden = await request.get("/v1/models");
+    const hiddenIds = ((await hidden.json()) as { data: Array<{ id: string }> }).data.map((row) => row.id);
+    expect(hiddenIds).not.toContain("deepseek/deepseek-v4-pro");
+    expect(hiddenIds).not.toContain("pro");
+    await row.getByRole("button", { name: "Enable" }).click();
+    await expect(row.getByText("ENABLED")).toBeVisible();
   });
 
   test("adds and removes a Command Code account from the web form", async ({ page }) => {

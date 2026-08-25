@@ -31,6 +31,8 @@ Non-loopback binds require `COMMAND_GO_PROXY_API_KEY`. Admin and inference route
 
 `setup opencode` writes `~/.config/opencode/opencode.json` and keeps unrelated providers. If your OpenCode version uses another path, set `OPENCODE_CONFIG`. A `.bak.<timestamp>` copy is created first.
 
+The OpenCode picker does not poll `GET /v1/models`. After toggling models in the dashboard, run `command-go-proxy setup opencode` again or use **Sync OpenCode** on the Models page.
+
 ## Upstream protocol drift
 
 `/alpha/generate` is undocumented. If Command Code changes the CLI envelope, only `packages/transport-commandcode` should need updates. See `docs/research.md`.

@@ -85,7 +85,9 @@ Authorization: Bearer $COMMAND_GO_PROXY_API_KEY
 command-go-proxy setup opencode
 ```
 
-Manual provider:
+Fetches enabled models from `GET /v1/models` and writes provider `command-go-pool`. Toggle the catalog on the dashboard **Models** page, then Sync OpenCode (or re-run setup) so the picker matches.
+
+Manual provider (model ids come from the proxy):
 
 ```json
 {
@@ -121,6 +123,8 @@ dashboard:
 aliases:
   flash: deepseek/deepseek-v4-flash
   vision: deepseek/deepseek-v4-flash-vision-exp
+models:
+  disabled: []
 ```
 
 Env: `COMMAND_GO_PROXY_HOST`, `COMMAND_GO_PROXY_PORT`, `COMMAND_GO_PROXY_API_KEY`, `COMMAND_GO_PROXY_MASTER_KEY`, `COMMAND_GO_PROXY_LOG_LEVEL`, `COMMAND_GO_PROXY_HOME`.

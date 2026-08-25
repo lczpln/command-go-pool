@@ -117,12 +117,11 @@ export async function saveProxyApiKey(apiKey: string) {
 }
 
 export async function patchModel(id: string, body: { enabled: boolean }) {
-  const result = await json<{ models: CatalogModel[] }>("/api/models", {
+  await json("/api/models", {
     method: "PATCH",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ id, ...body }),
   });
-  store.models = result.models;
   await refreshAll();
 }
 

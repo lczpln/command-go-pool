@@ -1,16 +1,26 @@
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openaiChatSchema, openaiToNormalized, openaiChunkFrame, openaiFinal } from "@command-go-proxy/protocol-openai";
 import { anthropicMessageSchema, anthropicToNormalized, anthropicStreamFrames, anthropicFinal } from "@command-go-proxy/protocol-anthropic";
-import { isLoopbackHost, newId } from "@command-go-proxy/shared";
+import {
+  OPENCODE_FALLBACK_MODELS,
+  catalogModels,
+  exposedInferenceModels,
+  isLoopbackHost,
+  isModelEnabled,
+  newId,
+  setModelEnabled,
+  writeOpenCodeConfig,
+  type AppConfig,
+} from "@command-go-proxy/shared";
 import { subsidyMultiplier } from "@command-go-proxy/quota-engine";
 import { saveConfig } from "@command-go-proxy/storage";
 import { emit, executeRequest, overview, type Runtime } from "./runtime.js";
 import { mergeQuota } from "./health.js";
-import type { AppConfig } from "@command-go-proxy/shared";
 
 function headerMap(headers: Record<string, unknown>): Record<string, string | undefined> {
   const out: Record<string, string | undefined> = {};
@@ -78,11 +88,9 @@ export async function buildApp(runtime: Runtime) {
   app.get("/api/health", async () => overview(runtime));
 
   app.get("/v1/models", async () => {
-    const ids = new Map<string, { id: string; object: string; owned_by: string }>();
+    const ids = new Set<string>();
     for (const account of runtime.pool.eligible()) {
-      for (const id of account.models ?? []) {
-        ids.set(id, { id, object: "model", owned_by: id.split("/")[0] ?? "command-code" });
-      }
+      for (const id of account.models ?? []) ids.add(id);
     }
     if (ids.size === 0) {
       for (const account of runtime.pool.list()) {
@@ -91,17 +99,13 @@ export async function buildApp(runtime: Runtime) {
         try {
           const models = await runtime.transport.listModels(cred);
           runtime.pool.update(account.id, { models: models.map((m) => m.id) });
-          for (const model of models) ids.set(model.id, { id: model.id, object: "model", owned_by: model.ownedBy ?? "command-code" });
+          for (const model of models) ids.add(model.id);
         } catch {
           /* skip */
         }
       }
     }
-    for (const alias of Object.keys(runtime.config.aliases)) {
-      const target = runtime.config.aliases[alias];
-      if (target && ids.has(target)) ids.set(alias, { id: alias, object: "model", owned_by: "alias" });
-    }
-    return { object: "list", data: [...ids.values()] };
+    return { object: "list", data: exposedInferenceModels(ids, runtime.config) };
   });
 
   app.post("/v1/chat/completions", async (req, reply) => {
@@ -110,6 +114,11 @@ export async function buildApp(runtime: Runtime) {
       return reply.code(400).send({ error: { message: parsed.error.message, type: "invalid_request_error" } });
     }
     const normalized = openaiToNormalized(parsed.data, runtime.config.aliases);
+    if (!isModelEnabled(parsed.data.model, runtime.config) || !isModelEnabled(normalized.model, runtime.config)) {
+      return reply.code(400).send({
+        error: { message: `Model ${parsed.data.model} is disabled`, type: "unsupported_model", code: "unsupported_model" },
+      });
+    }
     const headers = headerMap(req.headers);
     const abort = new AbortController();
     reply.raw.on("close", () => {
@@ -163,6 +172,12 @@ export async function buildApp(runtime: Runtime) {
       return reply.code(400).send({ type: "error", error: { type: "invalid_request_error", message: parsed.error.message } });
     }
     const normalized = anthropicToNormalized(parsed.data, runtime.config.aliases);
+    if (!isModelEnabled(parsed.data.model, runtime.config) || !isModelEnabled(normalized.model, runtime.config)) {
+      return reply.code(400).send({
+        type: "error",
+        error: { type: "unsupported_model", message: `Model ${parsed.data.model} is disabled` },
+      });
+    }
     const headers = headerMap(req.headers);
     const abort = new AbortController();
     reply.raw.on("close", () => {
@@ -381,6 +396,44 @@ export async function buildApp(runtime: Runtime) {
       off();
       reply.raw.end();
     });
+  });
+
+  app.get("/api/models", async () => ({ models: catalogModels(runtime.pool.list(), runtime.config) }));
+
+  app.patch("/api/models", async (req, reply) => {
+    const body = req.body as { id?: string; enabled?: boolean };
+    const id = typeof body.id === "string" ? body.id.trim() : "";
+    if (!id) return reply.code(400).send({ error: "id required" });
+    if (typeof body.enabled !== "boolean") return reply.code(400).send({ error: "enabled boolean required" });
+    runtime.config.models = runtime.config.models ?? { disabled: [] };
+    runtime.config.models.disabled = setModelEnabled(runtime.config.models.disabled ?? [], id, body.enabled);
+    saveConfig(runtime.config);
+    emit(runtime, { level: "info", category: "system", type: "models.updated", payload: { id, enabled: body.enabled } });
+    return { models: catalogModels(runtime.pool.list(), runtime.config) };
+  });
+
+  app.post("/api/setup/opencode", async (req) => {
+    const body = (req.body ?? {}) as { file?: string; baseUrl?: string };
+    const file = body.file?.trim() || process.env.OPENCODE_CONFIG || join(homedir(), ".config/opencode/opencode.json");
+    const baseUrl = body.baseUrl?.trim() || `http://${runtime.config.server.host}:${runtime.config.server.port}/v1`;
+    const enabled = catalogModels(runtime.pool.list(), runtime.config)
+      .filter((model) => model.enabled)
+      .map((model) => ({ id: model.id }));
+    const fallback = enabled.length === 0;
+    const models = fallback ? OPENCODE_FALLBACK_MODELS : enabled;
+    const message = writeOpenCodeConfig({
+      baseUrl,
+      file,
+      models,
+      apiKey: runtime.config.server.apiKey,
+    });
+    return {
+      ok: true,
+      file,
+      message,
+      models: models.map((m) => m.id),
+      warning: fallback ? "No enabled models in the pool; wrote fallback catalog." : undefined,
+    };
   });
 
   app.get("/api/config", async () => ({ config: publicConfig(runtime.config) }));

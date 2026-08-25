@@ -169,8 +169,8 @@ function program() {
   });
 
   const setup = cli.command("setup").description("Client integrations");
-  setup.command("opencode").action(() => {
-    console.log(setupOpenCode());
+  setup.command("opencode").action(async () => {
+    console.log(await setupOpenCode());
   });
   setup.command("claude").action(async () => {
     const ok = await confirm({

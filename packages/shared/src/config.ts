@@ -42,6 +42,11 @@ export const appConfigSchema = z.object({
     vision: "deepseek/deepseek-v4-flash-vision-exp",
     pro: "deepseek/deepseek-v4-pro",
   }),
+  models: z
+    .object({
+      disabled: z.array(z.string()).default([]),
+    })
+    .default({}),
   fallback: z
     .object({
       enabled: z.boolean().default(false),

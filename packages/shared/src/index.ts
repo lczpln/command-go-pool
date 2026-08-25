@@ -3,5 +3,16 @@ export type { AccountStatus, ProxyErrorCode, RoutingMode, QuotaSource, QuotaConf
 export { unknownQuota } from "./types.js";
 export { appConfigSchema, parseAppConfig, applyEnvOverrides, isLoopbackHost } from "./config.js";
 export type { AppConfig } from "./config.js";
+export {
+  OPENCODE_FALLBACK_MODELS,
+  isModelEnabled,
+  setModelEnabled,
+  displayNameForModel,
+  catalogModels,
+  exposedInferenceModels,
+} from "./models.js";
+export type { CatalogEntry, ModelPolicyConfig } from "./models.js";
+export { writeOpenCodeConfig, fetchProxyModels } from "./opencode.js";
+export type { OpenCodeModelInput, WriteOpenCodeOptions } from "./opencode.js";
 export { ERROR_POLICIES, policyFor, failure, classifyUpstreamError, parseResetTime } from "./errors.js";
 export { newId, sha256, fingerprintSession, identifySession } from "./session.js";

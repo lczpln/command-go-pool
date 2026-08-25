@@ -35,6 +35,9 @@ function describe(event: (typeof store.events)[number]): string {
   if (event.type === "proxy.error") {
     return `${accountLabel(p.accountId)} ${p.code}: ${p.message ?? ""}`.trim();
   }
+  if (event.type === "models.updated") {
+    return `Model ${p.id} ${p.enabled ? "enabled" : "disabled"}`;
+  }
   return `${event.type}`;
 }
 </script>
