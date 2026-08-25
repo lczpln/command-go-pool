@@ -11,7 +11,7 @@ export async function doctor(pool: AccountPool): Promise<number> {
   checks.push({ ok: existsSync(p.config), name: "config", detail: p.config });
   checks.push({ ok: existsSync(p.secrets) || pool.list().length === 0, name: "secret store", detail: p.secrets });
   const keySet = existsSync(p.config) && Boolean(loadConfig(home).server.apiKey?.trim());
-  checks.push({ ok: keySet, name: "pool API key", detail: keySet ? "set" : "missing" });
+  checks.push({ ok: true, name: "pool API key", detail: keySet ? "set" : "unset (optional)" });
   const accounts = pool.list();
   checks.push({ ok: accounts.length > 0, name: "accounts", detail: `${accounts.length} configured` });
   const authOk = accounts.filter((a) => a.status !== "auth_error");

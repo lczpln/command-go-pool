@@ -17,7 +17,7 @@ test.describe("dashboard", () => {
 
   test("navigates every primary page", async ({ page }) => {
     await page.goto("/");
-    for (const name of ["Accounts", "Models", "Sessions", "Usage", "Events", "Settings"]) {
+    for (const name of ["Accounts", "Clients", "Models", "Sessions", "Usage", "Events", "Settings"]) {
       await page.getByRole("link", { name, exact: true }).click();
       await expect(page.getByRole("heading", { name })).toBeVisible();
     }
@@ -70,29 +70,46 @@ test.describe("dashboard", () => {
     await expect(card).toHaveCount(0);
   });
 
-  test("settings rotates a local pool key you can copy", async ({ page, request }) => {
+  test("settings generates an optional local pool key you can rotate", async ({ page, request }) => {
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.goto("/settings");
     await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
     await expect(page.getByText("LOCAL PROXY KEY")).toBeVisible();
-    await expect(page.getByText("COMMAND_GO_POOL_API_KEY")).toBeVisible();
+    await expect(page.getByText("Optional lock for inference. Not required.")).toBeVisible();
     const section = page.locator("section").filter({ hasText: "LOCAL PROXY KEY" });
-    await expect(section.getByText("· set")).toBeVisible();
     const input = section.locator("input");
     await expect(input).toHaveValue("");
+    await section.getByRole("button", { name: "Generate" }).click();
+    await expect(section.getByText("Local pool key saved")).toBeVisible();
+    await expect(input).toHaveValue(/^cgp_[0-9a-f]{48}$/);
+    const issued = await input.inputValue();
+    await expect(section.getByRole("button", { name: "Copy" })).toBeVisible();
+    await section.getByRole("button", { name: "Copy" }).click();
+    await expect(section.getByRole("button", { name: "Copied" })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(issued);
     try {
       await section.getByRole("button", { name: "Rotate" }).click();
       await expect(section.getByText("Local pool key rotated")).toBeVisible();
+      await expect(input).not.toHaveValue(issued);
       await expect(input).toHaveValue(/^cgp_[0-9a-f]{48}$/);
-      const issued = await input.inputValue();
-      await expect(section.getByRole("button", { name: "Copy" })).toBeVisible();
-      await section.getByRole("button", { name: "Copy" }).click();
-      await expect(section.getByRole("button", { name: "Copied" })).toBeVisible();
-      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(issued);
     } finally {
-      await request.patch("/api/config", { data: { server: { apiKey: process.env.COMMAND_GO_POOL_API_KEY } } });
+      await request.patch("/api/config", { data: { server: { apiKey: "" } } });
     }
-    await expect(page.getByText("COMMISSION ACCOUNT")).toBeVisible();
+  });
+
+  test("clients page can connect and disconnect OpenCode", async ({ page }, testInfo) => {
+    const file = testInfo.outputPath("opencode.json");
+    await page.goto("/clients");
+    await expect(page.getByRole("heading", { name: "Clients" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "OpenCode" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Claude Code" })).toBeVisible();
+    const card = page.locator("article").filter({ has: page.getByRole("heading", { name: "OpenCode" }) });
+    const connected = await page.request.post("/api/clients/opencode/connect", { data: { file } });
+    expect(connected.ok()).toBeTruthy();
+    await page.reload();
+    await expect(card.getByText("CONNECTED")).toBeVisible();
+    await card.getByRole("button", { name: "Disconnect" }).click();
+    await expect(card.getByRole("button", { name: "Connect" })).toBeVisible();
   });
 });
 

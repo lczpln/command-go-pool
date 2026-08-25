@@ -1,13 +1,21 @@
 # Claude Code
 
 ```bash
+command-go-pool client connect claude
+# alias
 command-go-pool setup claude
 ```
 
-Writes `~/.command-go-pool/claude-settings.json` after confirmation. It only sets `ANTHROPIC_*` for the pool and does not modify your global Claude environment. `ANTHROPIC_API_KEY` is the generated pool key (`cgp_…`), not `pool-managed` and not a Command Code `user_…` key.
+Writes `~/.claude/command-go-pool.json`. It only sets `ANTHROPIC_*` for the pool and does **not** modify `~/.claude/settings.json` (that file is user-global and would hijack every Claude session).
 
 ```bash
-claude --settings ~/.command-go-pool/claude-settings.json
+claude --settings ~/.claude/command-go-pool.json
+```
+
+Disconnect:
+
+```bash
+command-go-pool client disconnect claude
 ```
 
 Claude Code maps three tiers onto pool models:
@@ -19,6 +27,8 @@ Claude Code maps three tiers onto pool models:
 | Haiku | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | `deepseek/deepseek-v4-flash` |
 
 `ANTHROPIC_BASE_URL` is the origin (`http://127.0.0.1:8787`), not `/v1`. Claude Code appends `/v1/messages` itself.
+
+A pool API key is optional. The file uses `pool-managed` until you generate a key; rotate then updates this file automatically.
 
 ## `/usage`
 

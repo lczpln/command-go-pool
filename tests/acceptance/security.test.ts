@@ -1,6 +1,4 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { isPoolApiKeyFormat } from "@command-go-pool/shared";
-import { loadConfig } from "@command-go-pool/storage";
 import { withServer, poolHeaders } from "../helpers.js";
 
 function containsSecret(value: unknown, secrets: string[]): boolean {
@@ -13,49 +11,21 @@ describe("security gates", () => {
     delete process.env.COMMAND_GO_POOL_HOME;
   });
 
-  it("issues a cgp_ pool key on boot and requires it for inference on loopback", async () => {
-    const instance = await withServer({
-      setup(_t, add) {
-        add("Go #01");
-      },
-    });
-    expect(isPoolApiKeyFormat(instance.runtime.config.server.apiKey ?? "")).toBe(true);
-    expect(loadConfig(instance.home).server.apiKey).toBe(instance.runtime.config.server.apiKey);
-    const denied = await instance.app.inject({ method: "GET", url: "/v1/models" });
-    expect(denied.statusCode).toBe(401);
-    const ok = await instance.app.inject({
-      method: "GET",
-      url: "/v1/models",
-      headers: poolHeaders(instance),
-    });
-    expect(ok.statusCode).toBe(200);
-    const admin = await instance.app.inject({ method: "GET", url: "/api/health" });
-    expect(admin.statusCode).toBe(200);
-    await instance.close();
-  });
-
-  it("requires the auto-generated pool API key on external bind for inference and admin", async () => {
+  it("allows inference and admin routes when bound off loopback without an API key", async () => {
     const instance = await withServer({
       config: { server: { host: "0.0.0.0", port: 0 } },
       setup(_t, add) {
         add("Go #01");
       },
     });
-    expect(instance.runtime.config.server.apiKey).toBeTruthy();
     const v1 = await instance.app.inject({ method: "GET", url: "/v1/models" });
     const api = await instance.app.inject({ method: "GET", url: "/api/health" });
-    expect(v1.statusCode).toBe(401);
-    expect(api.statusCode).toBe(401);
-    const ok = await instance.app.inject({
-      method: "GET",
-      url: "/v1/models",
-      headers: poolHeaders(instance),
-    });
-    expect(ok.statusCode).toBe(200);
+    expect(v1.statusCode).toBe(200);
+    expect(api.statusCode).toBe(200);
     await instance.close();
   });
 
-  it("requires the pool API key on external bind", async () => {
+  it("requires the pool API key on external bind when one is set", async () => {
     const instance = await withServer({
       config: { server: { host: "0.0.0.0", port: 0, apiKey: "pool-secret" } },
       setup(_t, add) {
@@ -201,15 +171,19 @@ describe("security gates", () => {
     await instance.close();
   });
 
-  it("rejects clearing the pool API key", async () => {
-    const instance = await withServer();
+  it("allows clearing the pool API key", async () => {
+    const instance = await withServer({
+      config: { server: { apiKey: "live-pool-key-xyz" } },
+    });
     const res = await instance.app.inject({
       method: "PATCH",
       url: "/api/config",
       payload: { server: { apiKey: "" } },
     });
-    expect(res.statusCode).toBe(400);
-    expect(instance.runtime.config.server.apiKey).toBeTruthy();
+    expect(res.statusCode).toBe(200);
+    expect(instance.runtime.config.server.apiKey).toBeUndefined();
+    const open = await instance.app.inject({ method: "GET", url: "/v1/models" });
+    expect(open.statusCode).toBe(200);
     await instance.close();
   });
 });

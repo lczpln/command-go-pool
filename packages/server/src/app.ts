@@ -21,6 +21,12 @@ import {
   newId,
   setModelEnabled,
   writeOpenCodeConfig,
+  connectClient,
+  disconnectClient,
+  listClientStatuses,
+  rotatePoolApiKey,
+  isClientId,
+  syncConnectedClientKeys,
   type AppConfig,
 } from "@command-go-pool/shared";
 import {
@@ -98,14 +104,7 @@ export async function buildApp(runtime: Runtime) {
     const isDashboard = !isInference && !isAdmin;
     const apiKey = runtime.config.server.apiKey?.trim();
     const exposed = !isLoopbackHost(runtime.config.server.host);
-    if (!apiKey) {
-      return reply.code(403).send({
-        error: {
-          message: "Pool API key is missing. Restart the pool to auto-generate one, or set COMMAND_GO_POOL_API_KEY.",
-          type: "authentication_error",
-        },
-      });
-    }
+    if (!apiKey) return;
     if (!exposed && !isInference) return;
     if (isDashboard && (req.method === "GET" || req.method === "HEAD")) return;
     const provided =
@@ -483,25 +482,74 @@ export async function buildApp(runtime: Runtime) {
     return { models: catalogModels(runtime.pool.list(), runtime.config) };
   });
 
-  app.post("/api/setup/opencode", async (req) => {
-    const body = (req.body ?? {}) as { file?: string; baseUrl?: string };
-    const file = body.file?.trim() || process.env.OPENCODE_CONFIG || join(homedir(), ".config/opencode/opencode.json");
-    const baseUrl = body.baseUrl?.trim() || `http://${runtime.config.server.host}:${runtime.config.server.port}/v1`;
+  function enabledClientModels() {
     const enabled = catalogModels(runtime.pool.list(), runtime.config)
       .filter((model) => model.enabled)
       .map((model) => ({ id: model.id }));
     const fallback = enabled.length === 0;
-    const models = fallback ? OPENCODE_FALLBACK_MODELS : enabled;
-    const message = writeOpenCodeConfig({
-      baseUrl,
-      file,
-      models,
-      apiKey: runtime.config.server.apiKey,
-    });
+    return { models: fallback ? OPENCODE_FALLBACK_MODELS : enabled, fallback };
+  }
+
+  function persistRuntimeConfig(next: AppConfig) {
+    Object.assign(runtime.config, next);
+    saveConfig(runtime.config);
+  }
+
+  app.get("/api/clients", async () => ({ clients: listClientStatuses(runtime.config) }));
+
+  app.post("/api/clients/:id/connect", async (req, reply) => {
+    const id = (req.params as { id: string }).id;
+    if (!isClientId(id)) return reply.code(404).send({ error: "unknown client" });
+    const body = (req.body ?? {}) as { file?: string };
+    const { models, fallback } = enabledClientModels();
+    const { config, result } = await connectClient(id, runtime.config, { file: body.file?.trim(), models });
+    persistRuntimeConfig(config);
+    emit(runtime, { level: "info", category: "system", type: "clients.updated", payload: { id, action: "connect", file: result.file } });
+    return { ok: result.ok, client: id, file: result.file, message: result.message, warning: fallback ? "No enabled models in the pool; wrote fallback catalog." : undefined };
+  });
+
+  app.post("/api/clients/:id/disconnect", async (req, reply) => {
+    const id = (req.params as { id: string }).id;
+    if (!isClientId(id)) return reply.code(404).send({ error: "unknown client" });
+    const { config, result } = disconnectClient(id, runtime.config);
+    persistRuntimeConfig(config);
+    emit(runtime, { level: "info", category: "system", type: "clients.updated", payload: { id, action: "disconnect", file: result.file } });
+    return { ok: result.ok, client: id, file: result.file, message: result.message };
+  });
+
+  app.post("/api/key/rotate", async () => {
+    const rotated = rotatePoolApiKey(runtime.config);
+    persistRuntimeConfig(rotated.config);
+    emit(runtime, { level: "info", category: "system", type: "clients.updated", payload: { action: "rotate", updated: rotated.updated.map((row) => row.id) } });
+    return { apiKey: rotated.apiKey, updated: rotated.updated, config: publicConfig(runtime.config) };
+  });
+
+  app.post("/api/setup/opencode", async (req) => {
+    const body = (req.body ?? {}) as { file?: string; baseUrl?: string };
+    const file = body.file?.trim() || process.env.OPENCODE_CONFIG || join(homedir(), ".config/opencode/opencode.json");
+    const { models, fallback } = enabledClientModels();
+    if (body.baseUrl?.trim()) {
+      const message = writeOpenCodeConfig({
+        baseUrl: body.baseUrl.trim(),
+        file,
+        models,
+        apiKey: runtime.config.server.apiKey,
+      });
+      persistRuntimeConfig({
+        ...runtime.config,
+        clients: {
+          ...runtime.config.clients,
+          connected: { ...runtime.config.clients.connected, opencode: { file } },
+        },
+      });
+      return { ok: true, file, message, models: models.map((m) => m.id), warning: fallback ? "No enabled models in the pool; wrote fallback catalog." : undefined };
+    }
+    const { config, result } = await connectClient("opencode", runtime.config, { file, models });
+    persistRuntimeConfig(config);
     return {
       ok: true,
-      file,
-      message,
+      file: result.file,
+      message: result.message,
       models: models.map((m) => m.id),
       warning: fallback ? "No enabled models in the pool; wrote fallback catalog." : undefined,
     };
@@ -509,20 +557,15 @@ export async function buildApp(runtime: Runtime) {
 
   app.get("/api/config", async () => ({ config: publicConfig(runtime.config) }));
 
-  app.patch("/api/config", async (req, reply) => {
+  app.patch("/api/config", async (req) => {
     const patch = req.body as Record<string, unknown>;
-    const serverPatch = (patch.server as { apiKey?: unknown } | undefined) ?? {};
-    if ("apiKey" in serverPatch) {
-      const next = typeof serverPatch.apiKey === "string" ? serverPatch.apiKey.trim() : "";
-      if (!next) {
-        return reply.code(400).send({ error: "Pool API key cannot be empty. Rotate it instead." });
-      }
-      serverPatch.apiKey = next;
-    }
-    const merged = { ...runtime.config, ...patch, server: { ...runtime.config.server, ...(patch.server as object | undefined) } };
+    const previousKey = runtime.config.server.apiKey;
+    const merged = { ...runtime.config, ...patch, server: { ...runtime.config.server, ...((patch.server as object) ?? {}) } };
+    if (typeof merged.server.apiKey === "string" && merged.server.apiKey.trim() === "") merged.server.apiKey = undefined;
     Object.assign(runtime.config, merged);
+    const updated = runtime.config.server.apiKey !== previousKey ? syncConnectedClientKeys(runtime.config) : [];
     saveConfig(runtime.config);
-    return { config: publicConfig(runtime.config) };
+    return { config: publicConfig(runtime.config), updated };
   });
 
   const dashboardDir = resolveDashboardDir();

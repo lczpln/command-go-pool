@@ -1,5 +1,6 @@
 export const POOL_API_KEY_PREFIX = "cgp_";
 export const POOL_API_KEY_BYTES = 24;
+export const PLACEHOLDER_CLIENT_KEY = "pool-managed";
 
 export function generatePoolApiKey(): string {
   const bytes = new Uint8Array(POOL_API_KEY_BYTES);
@@ -9,6 +10,10 @@ export function generatePoolApiKey(): string {
 
 export function isPoolApiKeyFormat(value: string): boolean {
   return new RegExp(`^${POOL_API_KEY_PREFIX}[0-9a-f]{${POOL_API_KEY_BYTES * 2}}$`).test(value);
+}
+
+export function clientApiKey(apiKey?: string): string {
+  return apiKey?.trim() || PLACEHOLDER_CLIENT_KEY;
 }
 
 export function ensurePoolApiKey(config: { server: { apiKey?: string } }): boolean {
