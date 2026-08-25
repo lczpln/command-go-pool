@@ -10,6 +10,7 @@ export function openCodeConfigPath(env: NodeJS.ProcessEnv = process.env): string
 export interface OpenCodeModelInput {
   id: string;
   name?: string;
+  aliasOf?: string;
 }
 
 export interface WriteOpenCodeOptions {

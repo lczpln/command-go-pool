@@ -1,6 +1,8 @@
 # OpenCode
 
 ```bash
+command-go-pool client connect opencode
+# alias
 command-go-pool setup opencode
 ```
 
@@ -9,7 +11,7 @@ This command:
 1. Detects `~/.config/opencode/opencode.json` (or `$OPENCODE_CONFIG`)
 2. Writes a timestamped `.bak.*` copy if the file exists
 3. Fetches enabled models from `GET /v1/models` (falls back to the three DeepSeek Go models if the pool is down)
-4. Adds provider `command-go-pool` pointing at `http://127.0.0.1:8787/v1` with the generated pool API key
+4. Adds provider `command-go-pool` pointing at `http://127.0.0.1:8787/v1` with the saved pool API key, or `pool-managed` if none is set
 5. Leaves other providers in place
 6. Prints the path and the keys it changed
 

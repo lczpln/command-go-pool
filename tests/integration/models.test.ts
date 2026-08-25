@@ -96,7 +96,7 @@ describe("model catalog APIs", () => {
   it("syncs enabled models to every connected client", async () => {
     const dir = mkdtempSync(join(tmpdir(), "cgp-clients-sync-"));
     const opencode = join(dir, "opencode.json");
-    const claude = join(dir, "claude-settings.json");
+    const claude = join(dir, "command-go-pool.json");
     writeFileSync(opencode, "{}");
     writeFileSync(claude, JSON.stringify({ env: { KEEP_ME: "yes" } }));
     const instance = await withServer({
@@ -108,17 +108,10 @@ describe("model catalog APIs", () => {
         });
       },
     });
-    const listed = await instance.app.inject({
-      method: "GET",
-      url: "/api/setup/clients",
-    });
-    expect(listed.statusCode).toBe(200);
+    await instance.app.inject({ method: "POST", url: "/api/clients/opencode/connect", payload: { file: opencode } });
+    await instance.app.inject({ method: "POST", url: "/api/clients/claude/connect", payload: { file: claude } });
 
-    const res = await instance.app.inject({
-      method: "POST",
-      url: "/api/setup/clients",
-      payload: { files: { opencode, claude }, baseUrl: "http://127.0.0.1:8787/v1" },
-    });
+    const res = await instance.app.inject({ method: "POST", url: "/api/clients/sync" });
     expect(res.statusCode).toBe(200);
     const body = res.json() as { ok: boolean; message: string; clients: Array<{ id: string; synced: boolean }> };
     expect(body.ok).toBe(true);
@@ -129,28 +122,22 @@ describe("model catalog APIs", () => {
     const oc = JSON.parse(readFileSync(opencode, "utf8")) as {
       provider: { "command-go-pool": { models: Record<string, unknown>; options?: { baseURL?: string } } };
     };
-    expect(oc.provider["command-go-pool"].options?.baseURL).toBe("http://127.0.0.1:8787/v1");
+    expect(oc.provider["command-go-pool"].options?.baseURL).toBe(
+      `http://127.0.0.1:${instance.runtime.config.server.port}/v1`,
+    );
     expect(oc.provider["command-go-pool"].models["deepseek/deepseek-v4-pro"]).toBeTruthy();
 
     const cc = JSON.parse(readFileSync(claude, "utf8")) as { env: Record<string, string> };
     expect(cc.env.KEEP_ME).toBe("yes");
-    expect(cc.env.ANTHROPIC_BASE_URL).toBe("http://127.0.0.1:8787");
-    expect(cc.env.ANTHROPIC_API_KEY).toBe(instance.runtime.config.server.apiKey);
+    expect(cc.env.ANTHROPIC_BASE_URL).toBe(`http://127.0.0.1:${instance.runtime.config.server.port}`);
     expect(cc.env.ANTHROPIC_DEFAULT_HAIKU_MODEL).toBe("deepseek/deepseek-v4-flash");
     expect(cc.env.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe("deepseek/deepseek-v4-pro");
     await instance.close();
   });
 
   it("does not invent client configs when none are connected", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "cgp-clients-none-"));
-    const opencode = join(dir, "opencode.json");
-    const claude = join(dir, "claude-settings.json");
     const instance = await withServer();
-    const res = await instance.app.inject({
-      method: "POST",
-      url: "/api/setup/clients",
-      payload: { files: { opencode, claude } },
-    });
+    const res = await instance.app.inject({ method: "POST", url: "/api/clients/sync" });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({
       ok: false,

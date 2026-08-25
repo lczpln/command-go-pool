@@ -13,7 +13,7 @@ describe("CLI surface", () => {
     });
     expect(result.status).toBe(0);
     const out = `${result.stdout}${result.stderr}`;
-    for (const token of ["init", "start", "status", "doctor", "account", "setup"]) {
+    for (const token of ["init", "start", "status", "doctor", "account", "setup", "rotate", "client"]) {
       expect(out).toContain(token);
     }
   });

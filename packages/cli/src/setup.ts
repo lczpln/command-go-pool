@@ -1,63 +1,32 @@
-import {
-  clientHost,
-  fetchPoolModels,
-  writeClaudeConfig,
-  writeOpenCodeConfig,
-  claudeSettingsPath,
-  openCodeConfigPath,
-  type AppConfig,
-} from "@command-go-pool/shared";
-import { dataHome } from "@command-go-pool/storage";
-
-function clientOrigin(config: AppConfig): string {
-  return `http://${clientHost(config.server.host)}:${config.server.port}`;
-}
+import { connectClient, parseAppConfig, type AppConfig } from "@command-go-pool/shared";
 
 export async function setupOpenCode(
   baseUrl = "http://127.0.0.1:8787/v1",
-  file = openCodeConfigPath(),
+  file?: string,
   opts: { fetchImpl?: typeof fetch; apiKey?: string } = {},
 ): Promise<string> {
-  const apiKey = opts.apiKey ?? process.env.COMMAND_GO_POOL_API_KEY;
-  const fetched = await fetchPoolModels(baseUrl, apiKey, opts.fetchImpl);
-  const lines = [
-    writeOpenCodeConfig({
-      baseUrl,
-      file,
-      models: fetched.models,
-      apiKey,
-    }),
-  ];
-  if (fetched.warning) lines.push(fetched.warning);
-  return lines.join("\n");
+  const config = parseAppConfig({ server: { ...parseServerFromUrl(baseUrl), apiKey: opts.apiKey } });
+  const { result } = await connectClient("opencode", config, { file, fetchImpl: opts.fetchImpl, apiKey: opts.apiKey });
+  return result.message;
 }
 
 export function setupOpenCodeFromConfig(
   config: AppConfig,
   opts: { file?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<string> {
-  return setupOpenCode(`${clientOrigin(config)}/v1`, opts.file, { fetchImpl: opts.fetchImpl, apiKey: config.server.apiKey });
+  return connectClient("opencode", config, opts).then(({ result }) => result.message);
 }
 
-export function setupClaude(config: AppConfig, file = claudeSettingsPath(dataHome())): string {
-  const origin = clientOrigin(config);
-  const apiKey = config.server.apiKey?.trim() || process.env.COMMAND_GO_POOL_API_KEY;
-  if (!apiKey) {
-    throw new Error("Pool API key is missing. Start the pool once so it can generate one, then re-run setup claude.");
+export async function setupClaude(config: AppConfig, file?: string): Promise<string> {
+  const { result } = await connectClient("claude", config, { file, apiKey: config.server.apiKey });
+  return result.message;
+}
+
+function parseServerFromUrl(baseUrl: string): { host: string; port: number } {
+  try {
+    const url = new URL(baseUrl);
+    return { host: url.hostname, port: Number(url.port || (url.protocol === "https:" ? 443 : 80)) };
+  } catch {
+    return { host: "127.0.0.1", port: 8787 };
   }
-  const written = writeClaudeConfig({ origin, file, apiKey });
-  return [
-    written,
-    "This file only sets ANTHROPIC_* for the pool. It does not modify your global Claude environment.",
-    "",
-    "Run:",
-    `  claude --settings ${file}`,
-    "",
-    "Claude Code /usage reads rate-limit headers on POST /v1/messages.",
-    `Quota JSON: GET ${origin}/api/oauth/usage  and  GET ${origin}/v1/usage`,
-    "",
-    "Manual equivalent:",
-    `  ANTHROPIC_BASE_URL=${origin}`,
-    `  ANTHROPIC_API_KEY=${apiKey}`,
-  ].join("\n");
 }

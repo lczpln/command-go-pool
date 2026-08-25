@@ -3,7 +3,38 @@ export type { AccountStatus, PoolErrorCode, RoutingMode, QuotaSource, QuotaConfi
 export { unknownQuota } from "./types.js";
 export { appConfigSchema, parseAppConfig, applyEnvOverrides, isLoopbackHost, clientHost } from "./config.js";
 export type { AppConfig } from "./config.js";
-export { POOL_API_KEY_PREFIX, POOL_API_KEY_BYTES, generatePoolApiKey, isPoolApiKeyFormat, ensurePoolApiKey } from "./pool-key.js";
+export {
+  POOL_API_KEY_PREFIX,
+  POOL_API_KEY_BYTES,
+  PLACEHOLDER_CLIENT_KEY,
+  generatePoolApiKey,
+  isPoolApiKeyFormat,
+  clientApiKey,
+  ensurePoolApiKey,
+} from "./pool-key.js";
+export {
+  CLIENT_IDS,
+  defaultOpenCodeFile,
+  defaultClaudeFile,
+  opencodeAdapter,
+  claudeAdapter,
+  getClientAdapter,
+  listClientAdapters,
+  listClientStatuses,
+  isClientId,
+  connectClient,
+  disconnectClient,
+  syncConnectedClientKeys,
+  syncConnectedClients,
+  rotatePoolApiKey,
+  markClientsOnboarded,
+  poolOrigin,
+  poolOpenAiUrl,
+  loopbackHost,
+  pickClaudeModelDefaults,
+  CLAUDE_FALLBACK_DEFAULTS,
+} from "./clients/index.js";
+export type { ClientId, ClientAdapter, ClientStatus, ClientWriteResult, ConnectOptions, DetectEnv, ClaudeModelDefaults } from "./clients/index.js";
 export {
   OPENCODE_FALLBACK_MODELS,
   isModelEnabled,
@@ -15,9 +46,5 @@ export {
 export type { CatalogEntry, ModelPolicyConfig } from "./models.js";
 export { writeOpenCodeConfig, fetchPoolModels, openCodeConfigPath } from "./opencode.js";
 export type { OpenCodeModelInput, WriteOpenCodeOptions } from "./opencode.js";
-export { writeClaudeConfig, pickClaudeModelDefaults, claudeSettingsPath, CLAUDE_FALLBACK_DEFAULTS } from "./claude.js";
-export type { ClaudeModelInput, ClaudeModelDefaults, WriteClaudeOptions } from "./claude.js";
-export { listClientTargets, syncConnectedClients } from "./clients.js";
-export type { ClientId, ClientTarget, ClientSyncResult, ClientPaths, ListClientOptions, SyncClientOptions } from "./clients.js";
 export { ERROR_POLICIES, policyFor, failure, classifyUpstreamError, parseResetTime } from "./errors.js";
 export { newId, sha256, fingerprintSession, identifySession } from "./session.js";

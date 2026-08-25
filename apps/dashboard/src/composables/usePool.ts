@@ -55,14 +55,14 @@ export interface CatalogModel {
   aliasOf?: string;
 }
 
-export interface ClientTarget {
+export interface PoolClient {
   id: string;
   name: string;
-  file: string;
+  protocol: string;
+  installed: boolean;
   connected: boolean;
-  ok?: boolean;
-  synced?: boolean;
-  message?: string;
+  configPath: string;
+  howToRun?: string;
 }
 
 export const store = reactive({
@@ -73,7 +73,7 @@ export const store = reactive({
   events: [] as Array<{ id: number; at: string; level: string; category: string; type: string; payload: Record<string, unknown> }>,
   config: null as null | Record<string, unknown>,
   models: [] as CatalogModel[],
-  clients: [] as ClientTarget[],
+  clients: [] as PoolClient[],
   connected: false,
   ready: false,
 });
@@ -127,6 +127,30 @@ export async function savePoolApiKey(apiKey: string) {
   await refreshAll();
 }
 
+export async function rotatePoolApiKey() {
+  const result = await json<{ apiKey: string; updated: Array<{ id: string; ok: boolean; file: string; message: string }> }>("/api/key/rotate", {
+    method: "POST",
+  });
+  await refreshAll();
+  return result;
+}
+
+export async function connectClient(id: string) {
+  const result = await json<{ ok: boolean; file: string; message: string; warning?: string }>(`/api/clients/${id}/connect`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  await refreshAll();
+  return result;
+}
+
+export async function disconnectClient(id: string) {
+  const result = await json<{ ok: boolean; file: string; message: string }>(`/api/clients/${id}/disconnect`, { method: "POST" });
+  await refreshAll();
+  return result;
+}
+
 export async function patchModel(id: string, body: { enabled: boolean }) {
   await json("/api/models", {
     method: "PATCH",
@@ -142,13 +166,13 @@ export async function syncClients() {
     message: string;
     models: string[];
     warning?: string;
-    clients: ClientTarget[];
-  }>("/api/setup/clients", {
+    clients: Array<{ id: string; name: string; file: string; ok: boolean; synced: boolean; message?: string }>;
+  }>("/api/clients/sync", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({}),
   });
-  store.clients = result.clients;
+  await refreshAll();
   return result;
 }
 
@@ -170,7 +194,7 @@ export async function refreshAll() {
     json<{ events: typeof store.events }>("/api/events"),
     json<{ config: Record<string, unknown> }>("/api/config"),
     json<{ models: CatalogModel[] }>("/api/models"),
-    json<{ clients: ClientTarget[] }>("/api/setup/clients").catch(() => ({ clients: [] as ClientTarget[] })),
+    json<{ clients: PoolClient[] }>("/api/clients"),
   ]);
   store.overview = health;
   store.accounts = accounts.accounts;
@@ -198,7 +222,7 @@ export function useLive() {
     const bump = () => {
       void refreshAll();
     };
-    for (const name of ["account.updated", "account.cooldown", "account.recovered", "session.started", "session.migrated", "session.ended", "usage.updated", "pool.error", "models.updated", "hello"]) {
+    for (const name of ["account.updated", "account.cooldown", "account.recovered", "session.started", "session.migrated", "session.ended", "usage.updated", "pool.error", "models.updated", "clients.updated", "hello"]) {
       es.addEventListener(name, bump);
     }
   });

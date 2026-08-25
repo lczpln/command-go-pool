@@ -2,8 +2,8 @@ import { createLogger, EventBus } from "@command-go-pool/observability";
 import { AccountPool } from "@command-go-pool/account-pool";
 import { SessionRouter } from "@command-go-pool/session-router";
 import { HttpAlphaTransport, MockTransport } from "@command-go-pool/transport-commandcode";
-import { AccountRepo, EventRepo, SessionRepo, UsageRepo, openDatabase, SecretStore, loadConfig, saveConfig } from "@command-go-pool/storage";
-import { ensurePoolApiKey, type AppConfig, type CommandCodeTransport } from "@command-go-pool/shared";
+import { AccountRepo, EventRepo, SessionRepo, UsageRepo, openDatabase, SecretStore, loadConfig } from "@command-go-pool/storage";
+import { type AppConfig, type CommandCodeTransport } from "@command-go-pool/shared";
 import { buildApp } from "./app.js";
 import { startHealthMonitor } from "./health.js";
 import type { Runtime } from "./runtime.js";
@@ -20,8 +20,7 @@ export async function boot(options: BootOptions = {}) {
   if (!config.server.apiKey?.trim() && loaded.server.apiKey?.trim()) {
     config.server.apiKey = loaded.server.apiKey.trim();
   }
-  const poolApiKeyGenerated = ensurePoolApiKey(config);
-  if (poolApiKeyGenerated) saveConfig(config, options.home);
+  const poolApiKeyGenerated = false;
   const log = createLogger();
   const db = openDatabase(options.home);
   const secrets = SecretStore.open(options.home);

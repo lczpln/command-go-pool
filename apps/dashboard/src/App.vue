@@ -7,6 +7,7 @@ useLive();
 const links = [
   { to: "/", label: "Overview" },
   { to: "/accounts", label: "Accounts" },
+  { to: "/clients", label: "Clients" },
   { to: "/models", label: "Models" },
   { to: "/sessions", label: "Sessions" },
   { to: "/usage", label: "Usage" },
