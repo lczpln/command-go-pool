@@ -18,7 +18,8 @@ const links = [
   <div class="min-h-full bg-ink text-paper">
     <div class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-5 md:flex-row">
       <aside class="md:w-44 md:shrink-0">
-        <p class="font-mono text-[11px] tracking-[0.3em] text-amber">CGP</p>
+        <img src="/favicon.svg" alt="" width="28" height="28" class="size-7" />
+        <p class="mt-3 font-mono text-[11px] tracking-[0.3em] text-amber">CGP</p>
         <p class="mt-2 text-sm">Command Go Proxy</p>
         <nav class="mt-6 flex flex-row gap-3 overflow-x-auto md:flex-col md:gap-1">
           <RouterLink

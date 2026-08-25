@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Command Go Proxy">
+  <rect width="32" height="32" rx="4" fill="#e0b060"/>
+  <g fill="#0b0d11">
+    <rect x="6" y="6" width="10" height="4"/>
+    <rect x="6" y="22" width="10" height="4"/>
+    <rect x="12" y="6" width="4" height="20"/>
+    <rect x="12" y="14" width="14" height="4"/>
+  </g>
+</svg>
