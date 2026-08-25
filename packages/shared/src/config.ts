@@ -55,6 +55,18 @@ export const appConfigSchema = z.object({
       modelMap: z.record(z.string()).default({}),
     })
     .default({ enabled: false }),
+  clients: z
+    .object({
+      onboarded: z.boolean().default(false),
+      connected: z
+        .record(
+          z.object({
+            file: z.string(),
+          }),
+        )
+        .default({}),
+    })
+    .default({}),
 });
 
 export type AppConfig = z.infer<typeof appConfigSchema>;

@@ -1,14 +1,24 @@
 import { Command } from "commander";
-import { input, password, confirm } from "@inquirer/prompts";
-import { POOL_NAME, POOL_VERSION, parseAppConfig } from "@command-go-pool/shared";
+import { input, password, checkbox } from "@inquirer/prompts";
+import {
+  POOL_NAME,
+  POOL_VERSION,
+  parseAppConfig,
+  connectClient,
+  disconnectClient,
+  listClientStatuses,
+  rotatePoolApiKey,
+  isClientId,
+  type ClientId,
+} from "@command-go-pool/shared";
 import { AccountRepo, SessionRepo, SecretStore, existsConfig, loadConfig, openDatabase, saveConfig } from "@command-go-pool/storage";
 import { AccountPool } from "@command-go-pool/account-pool";
 import { HttpAlphaTransport } from "@command-go-pool/transport-commandcode";
 import { boot, overview } from "@command-go-pool/server";
 import { compactStatus, startupBanner } from "./banner.js";
 import { onboard } from "./onboard.js";
-import { setupClaude, setupOpenCodeFromConfig } from "./setup.js";
 import { doctor } from "./doctor.js";
+import { isInteractive, maybeWireClients, wireClientsWizard } from "./clients.js";
 
 function poolFromDisk() {
   const db = openDatabase();
@@ -25,6 +35,7 @@ function poolFromDisk() {
 
 async function cmdStart() {
   if (!existsConfig()) saveConfig(parseAppConfig({}));
+  await maybeWireClients(loadConfig());
   const instance = await boot();
   await instance.listen();
   const snap = overview(instance.runtime);
@@ -51,6 +62,31 @@ async function cmdStart() {
   process.on("SIGTERM", stop);
 }
 
+function printClientList() {
+  const config = loadConfig();
+  for (const client of listClientStatuses(config)) {
+    const state = client.connected ? "connected" : client.installed ? "installed" : "not found";
+    console.log(`${client.id.padEnd(10)} ${client.name.padEnd(14)} ${state.padEnd(12)} ${client.configPath}`);
+    if (client.connected && client.howToRun) console.log(`           ${client.howToRun}`);
+  }
+}
+
+async function pickClientIds(message: string, connectedOnly = false): Promise<ClientId[]> {
+  const config = loadConfig();
+  const rows = listClientStatuses(config).filter((row) => (connectedOnly ? row.connected : true));
+  if (rows.length === 0) return [];
+  if (!isInteractive()) return rows.map((row) => row.id);
+  return (await checkbox({
+    message,
+    instructions: "Space to select, Enter to confirm",
+    choices: rows.map((row) => ({
+      name: `${row.name.padEnd(14)} ${row.connected ? "connected" : row.installed ? "installed" : "not found"}  ${row.configPath}`,
+      value: row.id,
+      checked: connectedOnly || row.installed,
+    })),
+  })) as ClientId[];
+}
+
 function program() {
   const cli = new Command();
   cli.name("command-go-pool").description(POOL_NAME).version(POOL_VERSION);
@@ -59,11 +95,17 @@ function program() {
     await cmdStart();
   });
 
-  cli.command("init").description("Create config and optionally add accounts from the CLI").action(async () => {
+  cli.command("init").description("Create config, wire CLIs, and optionally add accounts from the CLI").action(async () => {
     saveConfig(parseAppConfig({}));
     const { db, pool, transport } = poolFromDisk();
-    await onboard(pool, transport);
+    const startPool = await onboard(pool, transport);
     db.close();
+    let config = loadConfig();
+    if (isInteractive() && !config.clients.onboarded) {
+      config = await wireClientsWizard(config);
+      saveConfig(config);
+    }
+    if (startPool) await cmdStart();
   });
 
   cli.command("start").description("Start the pool; add accounts in the dashboard").action(async () => {
@@ -90,6 +132,18 @@ function program() {
     const code = await doctor(pool);
     db.close();
     process.exitCode = code;
+  });
+
+  cli.command("rotate").description("Generate a pool API key and update connected CLIs").action(() => {
+    const rotated = rotatePoolApiKey(loadConfig());
+    saveConfig(rotated.config);
+    console.log(rotated.apiKey);
+    console.log("Copy this key now; it is not shown again.");
+    if (rotated.updated.length === 0) {
+      console.log("No connected CLIs to update.");
+      return;
+    }
+    for (const row of rotated.updated) console.log(row.message);
   });
 
   const account = cli.command("account").description("Manage Command Code accounts");
@@ -168,20 +222,59 @@ function program() {
     db.close();
   });
 
+  const client = cli.command("client").description("Connect local coding CLIs to this pool");
+  client.command("list").description("Show detected and connected CLIs").action(() => {
+    printClientList();
+  });
+  client
+    .command("connect")
+    .argument("[ids...]")
+    .description("Write pool config into selected CLIs")
+    .action(async (ids: string[]) => {
+      let selected = ids.filter(isClientId);
+      if (selected.length === 0) selected = await pickClientIds("Select CLIs to connect");
+      if (selected.length === 0) {
+        console.log("No CLIs selected.");
+        return;
+      }
+      let config = loadConfig();
+      for (const id of selected) {
+        const { config: next, result } = await connectClient(id, config);
+        config = next;
+        console.log(result.message);
+      }
+      saveConfig(config);
+    });
+  client
+    .command("disconnect")
+    .argument("[ids...]")
+    .description("Remove pool config from selected CLIs")
+    .action(async (ids: string[]) => {
+      let selected = ids.filter(isClientId);
+      if (selected.length === 0) selected = await pickClientIds("Select CLIs to disconnect", true);
+      if (selected.length === 0) {
+        console.log("No connected CLIs.");
+        return;
+      }
+      let config = loadConfig();
+      for (const id of selected) {
+        const { config: next, result } = disconnectClient(id, config);
+        config = next;
+        console.log(result.message);
+      }
+      saveConfig(config);
+    });
+
   const setup = cli.command("setup").description("Client integrations");
   setup.command("opencode").action(async () => {
-    console.log(await setupOpenCodeFromConfig(loadConfig()));
+    const { config, result } = await connectClient("opencode", loadConfig());
+    saveConfig(config);
+    console.log(result.message);
   });
   setup.command("claude").action(async () => {
-    const ok = await confirm({
-      message: "Write a dedicated Claude settings file (will not change unrelated env vars)?",
-      default: true,
-    });
-    if (!ok) {
-      console.log("Aborted.");
-      return;
-    }
-    console.log(setupClaude());
+    const { config, result } = await connectClient("claude", loadConfig());
+    saveConfig(config);
+    console.log(result.message);
   });
 
   return cli;

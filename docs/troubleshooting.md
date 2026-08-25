@@ -33,9 +33,9 @@ If every account still shows Unavailable 5h/weekly bars on the dashboard, client
 
 Reasoning models often emit `reasoning-delta` for several seconds before text. That is upstream behavior. Idle timeout (default 120s) closes a stalled stream.
 
-## Bound to 0.0.0.0 and 403
+## Bound to 0.0.0.0
 
-Non-loopback binds require `COMMAND_GO_POOL_API_KEY`. Admin and inference routes then require that key.
+A pool API key is optional. If you set one, admin and inference routes then require that key. Generate it on Settings or with `command-go-pool rotate` so connected CLIs pick it up.
 
 ## OpenCode did not pick up the provider
 
@@ -49,4 +49,4 @@ The OpenCode picker does not poll `GET /v1/models`. After toggling models in the
 
 ## Docker data empty after restart
 
-Mount `/data` and set `COMMAND_GO_POOL_HOME=/data`. Also set `COMMAND_GO_POOL_HOST=0.0.0.0` and `COMMAND_GO_POOL_API_KEY`.
+Mount `/data` and set `COMMAND_GO_POOL_HOME=/data`. Also set `COMMAND_GO_POOL_HOST=0.0.0.0`. A pool API key is optional.

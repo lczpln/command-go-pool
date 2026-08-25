@@ -17,3 +17,6 @@ models:
   disabled: []
 fallback:
   enabled: false
+clients:
+  onboarded: false
+  connected: {}

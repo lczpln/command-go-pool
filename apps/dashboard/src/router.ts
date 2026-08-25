@@ -8,6 +8,7 @@ import SessionDetailPage from "./pages/SessionDetailPage.vue";
 import UsagePage from "./pages/UsagePage.vue";
 import EventsPage from "./pages/EventsPage.vue";
 import SettingsPage from "./pages/SettingsPage.vue";
+import ClientsPage from "./pages/ClientsPage.vue";
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -19,6 +20,7 @@ export const router = createRouter({
     { path: "/sessions", component: SessionsPage },
     { path: "/sessions/:id", component: SessionDetailPage },
     { path: "/usage", component: UsagePage },
+    { path: "/clients", component: ClientsPage },
     { path: "/events", component: EventsPage },
     { path: "/settings", component: SettingsPage },
   ],

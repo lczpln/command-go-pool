@@ -11,7 +11,7 @@ describe("security gates", () => {
     delete process.env.COMMAND_GO_POOL_HOME;
   });
 
-  it("locks inference and admin routes when bound off loopback without an API key", async () => {
+  it("allows inference and admin routes when bound off loopback without an API key", async () => {
     const instance = await withServer({
       config: { server: { host: "0.0.0.0", port: 0 } },
       setup(_t, add) {
@@ -20,8 +20,8 @@ describe("security gates", () => {
     });
     const v1 = await instance.app.inject({ method: "GET", url: "/v1/models" });
     const api = await instance.app.inject({ method: "GET", url: "/api/health" });
-    expect(v1.statusCode).toBe(403);
-    expect(api.statusCode).toBe(403);
+    expect(v1.statusCode).toBe(200);
+    expect(api.statusCode).toBe(200);
     await instance.close();
   });
 

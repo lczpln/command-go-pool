@@ -3,6 +3,27 @@ export type { AccountStatus, PoolErrorCode, RoutingMode, QuotaSource, QuotaConfi
 export { unknownQuota } from "./types.js";
 export { appConfigSchema, parseAppConfig, applyEnvOverrides, isLoopbackHost } from "./config.js";
 export type { AppConfig } from "./config.js";
+export { generatePoolApiKey, isPoolApiKeyFormat, clientApiKey, PLACEHOLDER_CLIENT_KEY } from "./pool-key.js";
+export {
+  CLIENT_IDS,
+  defaultOpenCodeFile,
+  defaultClaudeFile,
+  opencodeAdapter,
+  claudeAdapter,
+  getClientAdapter,
+  listClientAdapters,
+  listClientStatuses,
+  isClientId,
+  connectClient,
+  disconnectClient,
+  syncConnectedClientKeys,
+  rotatePoolApiKey,
+  markClientsOnboarded,
+  poolOrigin,
+  poolOpenAiUrl,
+  loopbackHost,
+} from "./clients/index.js";
+export type { ClientId, ClientAdapter, ClientStatus, ClientWriteResult, ConnectOptions, DetectEnv } from "./clients/index.js";
 export {
   OPENCODE_FALLBACK_MODELS,
   isModelEnabled,

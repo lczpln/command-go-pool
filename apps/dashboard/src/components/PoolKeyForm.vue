@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { savePoolApiKey, store } from "../composables/usePool";
-import { generatePoolApiKey } from "../utils/poolKey";
+import { rotatePoolApiKey, savePoolApiKey, store } from "../composables/usePool";
 import Skeleton from "./Skeleton.vue";
 
 const key = ref("");
@@ -23,33 +22,47 @@ watch(
   (ready) => {
     if (!ready || seeded.value) return;
     seeded.value = true;
-    if (configured.value) {
-      applied.value = true;
-      return;
-    }
-    key.value = generatePoolApiKey();
-    revealed.value = true;
+    if (configured.value) applied.value = true;
   },
   { immediate: true },
 );
+
+function updatedLabel(updated: Array<{ id: string; ok: boolean }>) {
+  const names = updated.filter((row) => row.ok).map((row) => (row.id === "claude" ? "Claude Code" : row.id === "opencode" ? "OpenCode" : row.id));
+  if (names.length === 0) return "No connected CLIs to update.";
+  return `Updated ${names.join(" and ")}.`;
+}
 
 async function rotate() {
   busy.value = true;
   message.value = null;
   copied.value = false;
   clearTimeout(copiedTimer);
-  const replacing = applied.value;
-  const next = replacing || !key.value.trim() ? generatePoolApiKey() : key.value.trim();
   try {
-    await savePoolApiKey(next);
-    key.value = next;
+    const replacing = applied.value;
+    const result = await rotatePoolApiKey();
+    key.value = result.apiKey;
     revealed.value = true;
     applied.value = true;
-    message.value = replacing
-      ? "Local pool key rotated. Copy it now; this screen will not show it again."
-      : "Local pool key saved. Clients send it as Authorization: Bearer.";
+    message.value = `${replacing ? "Local pool key rotated." : "Local pool key saved."} ${updatedLabel(result.updated)} Copy it now; this screen will not show it again.`;
   } catch (error) {
     message.value = error instanceof Error ? error.message : "Failed to rotate key";
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function clearKey() {
+  busy.value = true;
+  message.value = null;
+  try {
+    await savePoolApiKey("");
+    key.value = "";
+    revealed.value = false;
+    applied.value = false;
+    message.value = "Pool API key removed. Inference is open again; connected CLIs keep a placeholder key.";
+  } catch (error) {
+    message.value = error instanceof Error ? error.message : "Failed to clear key";
   } finally {
     busy.value = false;
   }
@@ -79,7 +92,7 @@ function selectKey(event: Event) {
   <section class="border border-line bg-panel">
     <header class="border-b border-line px-4 py-3">
       <p class="font-mono text-[11px] tracking-[0.28em] text-mist">LOCAL PROXY KEY</p>
-      <h2 class="mt-1 text-sm">Required key for OpenCode, Claude, and curl</h2>
+      <h2 class="mt-1 text-sm">Optional lock for inference. Not required.</h2>
     </header>
     <form class="flex flex-col gap-3 px-4 py-4 md:flex-row md:items-end" @submit.prevent="rotate">
       <label class="block min-w-0 flex-1">
@@ -97,7 +110,7 @@ function selectKey(event: Event) {
             readonly
             spellcheck="false"
             autocomplete="off"
-            :placeholder="configured ? '••••••••  rotate to replace' : 'generating…'"
+            :placeholder="configured ? '••••••••  generate to replace' : 'unset — generate only if you want a lock'"
             @focus="selectKey"
           />
           <button
@@ -117,11 +130,20 @@ function selectKey(event: Event) {
         </span>
       </label>
       <button class="border border-line px-3 py-2 font-mono text-[12px] hover:border-amber disabled:opacity-50" :disabled="busy || !store.ready" type="submit">
-        {{ busy ? "Rotating…" : "Rotate" }}
+        {{ busy ? "Saving…" : configured ? "Rotate" : "Generate" }}
+      </button>
+      <button
+        v-if="configured"
+        class="border border-line px-3 py-2 font-mono text-[12px] text-mist hover:border-bad hover:text-bad disabled:opacity-50"
+        :disabled="busy || !store.ready"
+        type="button"
+        @click="clearKey"
+      >
+        Remove
       </button>
     </form>
     <p class="border-t border-line px-4 py-2 font-mono text-[11px] text-mist">
-      Clients send this as Authorization: Bearer. Not an upstream Command Code credential. Copy after rotate; this screen never shows a stored key again.
+      Optional. Clients work without it. If you generate one, connected CLIs on the Clients page receive the new key automatically.
     </p>
     <p v-if="message" class="px-4 pb-3 font-mono text-[12px] text-ok">{{ message }}</p>
   </section>

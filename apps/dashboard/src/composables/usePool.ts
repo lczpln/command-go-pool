@@ -55,6 +55,16 @@ export interface CatalogModel {
   aliasOf?: string;
 }
 
+export interface PoolClient {
+  id: string;
+  name: string;
+  protocol: string;
+  installed: boolean;
+  connected: boolean;
+  configPath: string;
+  howToRun?: string;
+}
+
 export const store = reactive({
   overview: null as null | Record<string, unknown>,
   accounts: [] as Account[],
@@ -63,6 +73,7 @@ export const store = reactive({
   events: [] as Array<{ id: number; at: string; level: string; category: string; type: string; payload: Record<string, unknown> }>,
   config: null as null | Record<string, unknown>,
   models: [] as CatalogModel[],
+  clients: [] as PoolClient[],
   connected: false,
   ready: false,
 });
@@ -116,6 +127,30 @@ export async function savePoolApiKey(apiKey: string) {
   await refreshAll();
 }
 
+export async function rotatePoolApiKey() {
+  const result = await json<{ apiKey: string; updated: Array<{ id: string; ok: boolean; file: string; message: string }> }>("/api/key/rotate", {
+    method: "POST",
+  });
+  await refreshAll();
+  return result;
+}
+
+export async function connectClient(id: string) {
+  const result = await json<{ ok: boolean; file: string; message: string; warning?: string }>(`/api/clients/${id}/connect`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  await refreshAll();
+  return result;
+}
+
+export async function disconnectClient(id: string) {
+  const result = await json<{ ok: boolean; file: string; message: string }>(`/api/clients/${id}/disconnect`, { method: "POST" });
+  await refreshAll();
+  return result;
+}
+
 export async function patchModel(id: string, body: { enabled: boolean }) {
   await json("/api/models", {
     method: "PATCH",
@@ -144,7 +179,7 @@ export async function fetchUsage(filter?: { accountId?: string; model?: string; 
 }
 
 export async function refreshAll() {
-  const [health, accounts, sessions, usage, events, config, models] = await Promise.all([
+  const [health, accounts, sessions, usage, events, config, models, clients] = await Promise.all([
     json<Record<string, unknown>>("/api/health"),
     json<{ accounts: Account[] }>("/api/accounts"),
     json<{ sessions: Session[] }>("/api/sessions"),
@@ -152,6 +187,7 @@ export async function refreshAll() {
     json<{ events: typeof store.events }>("/api/events"),
     json<{ config: Record<string, unknown> }>("/api/config"),
     json<{ models: CatalogModel[] }>("/api/models"),
+    json<{ clients: PoolClient[] }>("/api/clients"),
   ]);
   store.overview = health;
   store.accounts = accounts.accounts;
@@ -160,6 +196,7 @@ export async function refreshAll() {
   store.events = events.events;
   store.config = config.config;
   store.models = models.models;
+  store.clients = clients.clients;
   store.ready = true;
 }
 
@@ -178,7 +215,7 @@ export function useLive() {
     const bump = () => {
       void refreshAll();
     };
-    for (const name of ["account.updated", "account.cooldown", "account.recovered", "session.started", "session.migrated", "session.ended", "usage.updated", "pool.error", "models.updated", "hello"]) {
+    for (const name of ["account.updated", "account.cooldown", "account.recovered", "session.started", "session.migrated", "session.ended", "usage.updated", "pool.error", "models.updated", "clients.updated", "hello"]) {
       es.addEventListener(name, bump);
     }
   });

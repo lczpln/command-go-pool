@@ -77,7 +77,7 @@ Start the pool, then add Command Code keys in the dashboard — not the CLI.
 3. On **Accounts**, paste a Studio API key (`user_…`).
 4. The key is encrypted at rest and never shown again.
 
-Optional: set a local pool key on **Settings** if clients should send `Authorization: Bearer`. Required when binding outside localhost.
+Optional: generate a local pool key on **Settings** if you want clients to send `Authorization: Bearer`. It is never required. Generating or rotating it updates every connected CLI on the **Clients** page.
 
 `command-go-pool init` and `command-go-pool account add` still work if you prefer the terminal.
 
@@ -98,12 +98,14 @@ command-go-pool --version
 | --- | --- |
 | `command-go-pool` | Start the gateway (same as `start`) |
 | `command-go-pool start` | Start the gateway; add accounts in the dashboard |
-| `command-go-pool init` | Create `config.yaml` and optionally add accounts interactively |
+| `command-go-pool init` | Create `config.yaml`, wire local CLIs, and optionally add accounts interactively |
 | `command-go-pool status` | Print bind URL, account counts, sessions, and quota meters |
 | `command-go-pool doctor` | Check the data directory, SQLite, config, secrets, and auth |
+| `command-go-pool rotate` | Generate a pool API key and write it into connected CLIs |
 | `command-go-pool account …` | Add, list, remove, enable, disable, or test accounts |
-| `command-go-pool setup opencode` | Write the OpenCode provider pointing at this pool |
-| `command-go-pool setup claude` | Write a dedicated Claude Code settings file |
+| `command-go-pool client …` | List, connect, or disconnect local CLIs |
+| `command-go-pool setup opencode` | Alias of `client connect opencode` |
+| `command-go-pool setup claude` | Alias of `client connect claude` |
 
 ### Start the pool
 
@@ -113,7 +115,7 @@ command-go-pool
 command-go-pool start
 ```
 
-Creates a default config on first run if none exists, then serves:
+Creates a default config on first run if none exists. On an interactive TTY it also detects compatible CLIs (OpenCode, Claude Code), lets you Space-select which to wire, then writes pool config into each selected CLI folder. It does **not** generate a pool API key. Then serves:
 
 - Inference at `http://<host>:<port>/v1`
 - Dashboard at `http://<host>:<port>`
@@ -128,9 +130,28 @@ Host and port come from `~/.command-go-pool/config.yaml` and can be overridden w
 command-go-pool init
 ```
 
-Writes the default config, then prompts for account labels and Studio API keys. Each key is tested against Command Code before it is kept. You can add more than one account, then optionally start the pool from the same prompt.
+Writes the default config, then prompts for account labels and Studio API keys. Each key is tested against Command Code before it is kept. You can add more than one account. On a TTY it then detects local CLIs and asks which ones to wire (Space to select, Enter to confirm). You can start the pool from the same prompt.
 
 Prefer the dashboard for day-to-day account management; `init` is the terminal path.
+
+### Rotate pool key
+
+```bash
+command-go-pool rotate
+```
+
+Optional. Prints a new `cgp_…` key once and writes it into every connected CLI. Same as **Generate** / **Rotate** on Settings.
+
+### Client connections
+
+```bash
+command-go-pool client list
+command-go-pool client connect
+command-go-pool client connect opencode claude
+command-go-pool client disconnect opencode
+```
+
+`connect` without ids opens the same Space-to-select prompt as first-run. `setup opencode` / `setup claude` remain as aliases.
 
 ### Status
 
@@ -232,11 +253,13 @@ Deletes the account row and its stored secret. Sessions bound to it are no longe
 ### Client setup
 
 ```bash
+command-go-pool client list
+command-go-pool client connect
 command-go-pool setup opencode
 command-go-pool setup claude
 ```
 
-These write **local client config** that points at the running pool. They do not start the server. See [Client integrations](#client-integrations).
+These write **local client config** that points at the pool. They do not start the server. See [Client integrations](#client-integrations).
 
 ---
 
@@ -248,11 +271,12 @@ With the pool running, open [http://127.0.0.1:8787](http://127.0.0.1:8787).
 | --- | --- |
 | Overview | Pool health, quota bars, live account mix |
 | Accounts | Paste Studio keys, inspect, test, enable/disable |
+| Clients | Connect or disconnect local CLIs (OpenCode, Claude Code) |
 | Models | Toggle which model ids the pool exposes; Sync OpenCode |
 | Sessions | Sticky bindings, migrations, token usage |
 | Usage | Request/cost rollups over time |
 | Events | Live stream of cooldowns, failovers, errors |
-| Settings | Pool API key, bind/routing snapshot |
+| Settings | Optional pool API key, bind/routing snapshot |
 
 Admin JSON never includes secrets. Rotate a key from Accounts (or `PATCH /api/accounts/:id`) rather than editing files by hand.
 
@@ -277,9 +301,9 @@ Inference responses also carry Anthropic `anthropic-ratelimit-unified-*` headers
 
 ### Auth
 
-On localhost, inference works without a pool key unless you set one.
+A pool API key is **optional**. Inference and the dashboard work without one, including when bound outside localhost.
 
-When `COMMAND_GO_POOL_API_KEY` (or `server.apiKey`) is set — and **always** when binding outside loopback — clients must send:
+If you generate one (`command-go-pool rotate` or Settings), clients must send:
 
 ```http
 Authorization: Bearer <COMMAND_GO_POOL_API_KEY>
@@ -291,7 +315,7 @@ or:
 x-api-key: <COMMAND_GO_POOL_API_KEY>
 ```
 
-This is the **pool** key, not a Command Code `user_…` key. Upstream credentials never leave the gateway.
+Generating or rotating the key updates every connected CLI automatically. This is the **pool** key, not a Command Code `user_…` key. Upstream credentials never leave the gateway.
 
 ### Sticky and routing headers
 
@@ -417,10 +441,10 @@ Returns `{ usage: { rolling, weekly, monthly } }` with used `percent` and `reset
 command-go-pool setup claude
 ```
 
-Writes `~/.command-go-pool/claude-settings.json` after confirmation. It only sets `ANTHROPIC_*` for the pool; it does not modify your global Claude environment.
+Writes `~/.claude/command-go-pool.json`. It only sets `ANTHROPIC_*` for the pool and does **not** modify `~/.claude/settings.json`.
 
 ```bash
-claude --settings ~/.command-go-pool/claude-settings.json
+claude --settings ~/.claude/command-go-pool.json
 ```
 
 Manual equivalent:
@@ -450,7 +474,7 @@ Point Cline, Roo Code, Continue, or any OpenAI SDK at:
 
 ```text
 base URL  http://127.0.0.1:8787/v1
-API key   pool-managed   (or your COMMAND_GO_POOL_API_KEY)
+API key   pool-managed   (or your COMMAND_GO_POOL_API_KEY if you generated one)
 ```
 
 Do **not** point Go accounts at `https://api.commandcode.ai/provider/v1` for generation. Official Provider API chat is not included on Go (`upgrade_required`). This pool uses an isolated generation adapter instead.
@@ -497,15 +521,15 @@ Environment variables override `server.host`, `server.port`, and `server.apiKey`
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `COMMAND_GO_POOL_HOST` | `127.0.0.1` | Bind address. Non-loopback **requires** a pool API key |
+| `COMMAND_GO_POOL_HOST` | `127.0.0.1` | Bind address |
 | `COMMAND_GO_POOL_PORT` | `8787` | Bind port |
-| `COMMAND_GO_POOL_API_KEY` | unset | Gate inference and admin routes |
+| `COMMAND_GO_POOL_API_KEY` | unset | Optional. If set, gate inference (and admin when not on loopback) |
 | `COMMAND_GO_POOL_MASTER_KEY` | generated `master.key` | AES-256-GCM key for `secrets.bin` |
 | `COMMAND_GO_POOL_HOME` | `~/.command-go-pool` | Data directory (`state.db`, config, secrets, logs) |
 | `COMMAND_GO_POOL_LOG_LEVEL` | `info` | Pino log level |
 | `OPENCODE_CONFIG` | `~/.config/opencode/opencode.json` | Path written by `setup opencode` |
 
-A template lives in [`.env.example`](.env.example). Docker must set `COMMAND_GO_POOL_HOST=0.0.0.0` and `COMMAND_GO_POOL_API_KEY`.
+A template lives in [`.env.example`](.env.example). Docker typically sets `COMMAND_GO_POOL_HOST=0.0.0.0`. A pool API key is optional.
 
 ---
 
@@ -524,7 +548,7 @@ Quota UI labels **exact** upstream values vs **estimated** local usage vs **unav
 
 ## Security
 
-- Default bind is `127.0.0.1`. Binding `0.0.0.0` (or any non-loopback host) requires `COMMAND_GO_POOL_API_KEY` and authenticates **both** inference and admin routes.
+- Default bind is `127.0.0.1`. A pool API key is optional on any bind. If you set one, inference requires it; off-loopback admin routes require it too. Generate/rotate updates connected CLIs.
 - Credentials are encrypted at rest (AES-256-GCM in `secrets.bin`). SQLite stores a `credential_ref` only.
 - Optional OS keychain when the `keytar` native module loads.
 - Admin JSON never includes secrets. The dashboard never returns credentials.
@@ -539,7 +563,7 @@ Default: `~/.command-go-pool/` (`COMMAND_GO_POOL_HOME` override). If an older `~
 
 | File | Contents |
 | --- | --- |
-| `config.yaml` | Bind, routing, aliases, disabled models |
+| `config.yaml` | Bind, routing, aliases, disabled models, connected CLIs |
 | `state.db` | Accounts metadata, sessions, usage, events |
 | `secrets.bin` | Encrypted Command Code keys |
 | `master.key` | Local wrapping key (unless `COMMAND_GO_POOL_MASTER_KEY` is set) |
@@ -551,21 +575,19 @@ Schema: [`docs/schema.md`](docs/schema.md).
 
 ## Docker
 
-The container binds `0.0.0.0`, so a pool API key is **required**. Persist `/data`.
+The container binds `0.0.0.0`. A pool API key is optional; generate one if you want to lock the endpoint. Persist `/data`.
 
 ```bash
 docker run \
   -p 8787:8787 \
   -e COMMAND_GO_POOL_HOST=0.0.0.0 \
-  -e COMMAND_GO_POOL_API_KEY=change-me \
   -v command-go-pool:/data \
   command-go-pool
 ```
 
-Compose (set `COMMAND_GO_POOL_API_KEY` in the environment first):
+Compose:
 
 ```bash
-export COMMAND_GO_POOL_API_KEY=change-me
 docker compose up --build
 ```
 

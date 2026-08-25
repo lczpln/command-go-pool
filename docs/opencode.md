@@ -1,6 +1,8 @@
 # OpenCode
 
 ```bash
+command-go-pool client connect opencode
+# alias
 command-go-pool setup opencode
 ```
 

@@ -1,6 +1,6 @@
 # SQLite schema
 
-Default directory: `~/.command-go-pool/` (`COMMAND_GO_POOL_HOME` override). Files: `state.db`, `config.yaml`, `secrets.bin`, `master.key`, `logs/`.
+Default directory: `~/.command-go-pool/` (`COMMAND_GO_POOL_HOME` override). Files: `state.db`, `config.yaml`, `secrets.bin`, `master.key`, `logs/`. Connected CLIs are listed under `clients.connected` in `config.yaml`, not in SQLite.
 
 Mode `0700` on the directory, `0600` on db/config/secrets.
 

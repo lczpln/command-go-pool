@@ -2,7 +2,7 @@
 
 ## Inference (`/v1`)
 
-Auth: if `server.apiKey` or `COMMAND_GO_POOL_API_KEY` is set, require `Authorization: Bearer` or `x-api-key`. Required when bind host is not loopback.
+Auth: if `server.apiKey` or `COMMAND_GO_POOL_API_KEY` is set, require `Authorization: Bearer` or `x-api-key`. The key is optional on every bind, including non-loopback.
 
 | Method | Path | Notes |
 | --- | --- | --- |
@@ -33,7 +33,11 @@ Same auth rules. Never includes credential material.
 | POST | `/api/accounts/:id/test` |
 | GET | `/api/models` | Pool catalog: `{ id, enabled, accountIds[], aliasOf? }` |
 | PATCH | `/api/models` | Body `{ id, enabled }`. Persists `config.models.disabled`. |
-| POST | `/api/setup/opencode` | Writes `opencode.json` with currently enabled models. Optional body `{ file, baseUrl }`. |
+| POST | `/api/setup/opencode` | Writes `opencode.json` with currently enabled models and marks OpenCode connected. Optional body `{ file, baseUrl }`. |
+| GET | `/api/clients` | Detected local CLIs plus connected state. |
+| POST | `/api/clients/:id/connect` | Write pool config for `opencode` or `claude`. Optional `{ file }`. |
+| POST | `/api/clients/:id/disconnect` | Remove pool config from that CLI. |
+| POST | `/api/key/rotate` | Generate a `cgp_` key, persist it, and write it into connected CLIs. Returns the key once. |
 | GET | `/api/sessions` |
 | GET | `/api/sessions/:id` |
 | GET | `/api/usage` | Request/cost rollups plus `windows` (same quota objects as the pool). |
@@ -42,4 +46,4 @@ Same auth rules. Never includes credential material.
 | GET | `/api/events/stream` (SSE) |
 | GET/PATCH | `/api/config` |
 
-SSE event names: `account.updated`, `account.cooldown`, `account.recovered`, `session.started`, `session.migrated`, `session.ended`, `usage.updated`, `models.updated`, `pool.error`.
+SSE event names: `account.updated`, `account.cooldown`, `account.recovered`, `session.started`, `session.migrated`, `session.ended`, `usage.updated`, `models.updated`, `clients.updated`, `pool.error`.
