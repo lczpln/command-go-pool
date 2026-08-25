@@ -7,7 +7,7 @@ import { HttpAlphaTransport } from "@command-go-pool/transport-commandcode";
 import { boot, overview } from "@command-go-pool/server";
 import { compactStatus, startupBanner } from "./banner.js";
 import { onboard } from "./onboard.js";
-import { setupClaude, setupOpenCode } from "./setup.js";
+import { setupClaude, setupOpenCodeFromConfig } from "./setup.js";
 import { doctor } from "./doctor.js";
 
 function poolFromDisk() {
@@ -170,7 +170,7 @@ function program() {
 
   const setup = cli.command("setup").description("Client integrations");
   setup.command("opencode").action(async () => {
-    console.log(await setupOpenCode());
+    console.log(await setupOpenCodeFromConfig(loadConfig()));
   });
   setup.command("claude").action(async () => {
     const ok = await confirm({

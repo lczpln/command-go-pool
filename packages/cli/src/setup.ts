@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { fetchPoolModels, writeOpenCodeConfig } from "@command-go-pool/shared";
+import { fetchPoolModels, writeOpenCodeConfig, type AppConfig } from "@command-go-pool/shared";
 
 export async function setupOpenCode(
   baseUrl = "http://127.0.0.1:8787/v1",
@@ -19,6 +19,15 @@ export async function setupOpenCode(
   ];
   if (fetched.warning) lines.push(fetched.warning);
   return lines.join("\n");
+}
+
+export function setupOpenCodeFromConfig(
+  config: AppConfig,
+  opts: { file?: string; fetchImpl?: typeof fetch } = {},
+): Promise<string> {
+  const host = config.server.host === "0.0.0.0" || config.server.host === "::" ? "127.0.0.1" : config.server.host;
+  const baseUrl = `http://${host}:${config.server.port}/v1`;
+  return setupOpenCode(baseUrl, opts.file, { fetchImpl: opts.fetchImpl, apiKey: config.server.apiKey });
 }
 
 export function setupClaude(baseUrl = "http://127.0.0.1:8787"): string {

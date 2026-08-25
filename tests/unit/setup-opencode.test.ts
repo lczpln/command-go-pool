@@ -2,7 +2,8 @@ import { mkdtempSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { setupOpenCode } from "../../packages/cli/src/setup.js";
+import { parseAppConfig } from "@command-go-pool/shared";
+import { setupOpenCode, setupOpenCodeFromConfig } from "../../packages/cli/src/setup.js";
 
 describe("OpenCode setup", () => {
   it("adds the local provider, keeps unrelated providers, and writes a backup", async () => {
@@ -45,5 +46,30 @@ describe("OpenCode setup", () => {
     };
     expect(written.provider["command-go-pool"].models["deepseek/deepseek-v4-pro"]).toBeTruthy();
     expect(message).toContain("using fallback models");
+  });
+
+  it("sends the saved pool API key when fetching models and writes it into opencode.json", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "cgp-oc-key-"));
+    const file = join(dir, "opencode.json");
+    let auth: string | undefined;
+    const fetchImpl: typeof fetch = async (_url, init) => {
+      const headers = new Headers(init?.headers);
+      auth = headers.get("authorization") ?? undefined;
+      return new Response(JSON.stringify({ object: "list", data: [{ id: "deepseek/deepseek-v4-flash" }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const message = await setupOpenCodeFromConfig(
+      parseAppConfig({ server: { host: "0.0.0.0", port: 8787, apiKey: "pool-secret" } }),
+      { file, fetchImpl },
+    );
+    const written = JSON.parse(readFileSync(file, "utf8")) as {
+      provider: { "command-go-pool": { options?: { baseURL?: string; apiKey?: string } } };
+    };
+    expect(auth).toBe("Bearer pool-secret");
+    expect(written.provider["command-go-pool"].options?.apiKey).toBe("pool-secret");
+    expect(written.provider["command-go-pool"].options?.baseURL).toBe("http://127.0.0.1:8787/v1");
+    expect(message).not.toContain("HTTP 401");
   });
 });
