@@ -37,7 +37,7 @@ function cellClass(tone: string, on: boolean, empty: boolean) {
         <p class="font-mono text-[11px] tracking-[0.28em] text-mist">POOL CAPACITY</p>
         <h2 class="mt-1 text-sm tracking-tight">Remaining across the account pool</h2>
       </div>
-      <p v-if="credits !== undefined" class="font-mono text-[12px] text-amber">~${{ credits.toFixed(2) }} credits</p>
+      <p v-if="credits !== undefined" class="font-mono text-[12px] text-amber">~${{ credits.toFixed(2) }}</p>
     </header>
     <div class="grid gap-px bg-line md:grid-cols-3">
       <article v-for="row in rows" :key="row.label" class="bg-panel px-4 py-4">
