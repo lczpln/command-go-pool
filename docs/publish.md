@@ -30,13 +30,13 @@ The published tarball is what npx installs. It must contain:
 
 4. After the connection is saved, later releases on `v*` tags publish with OIDC. No `NPM_TOKEN` is required.
 
-Do not fill **Environment name** unless `.github/workflows/publish.yml` also has a matching `environment:` field. A mismatch fails publish with `ENEEDAUTH`.
+Do not fill **Environment name** unless `.github/workflows/publish.yml` also has a matching `environment:` field. A mismatch fails publish with `ENEEDAUTH` or a misleading `E404` on `PUT`.
 
-## First publish
+The publish workflow must run on **Node 24** (npm ≥ 11.5.1). Do not set `registry-url` / `NODE_AUTH_TOKEN` on that job: `setup-node` would write an empty `_authToken` and npm would skip OIDC.
 
-The name `command-go-pool` is not taken on npm yet. Either path creates it.
+## First publish of a new name
 
-### From a machine (after `npm login`)
+If the package name is not on npm yet, create it once from a machine after `npm login` (Trusted Publisher cannot always create the first version):
 
 ```bash
 npm run build
@@ -44,20 +44,7 @@ npm run pack:check
 npm publish --access public
 ```
 
-### From GitHub (recommended)
-
-`package.json` is already `0.1.0`. After the Trusted Publisher is set:
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-The `publish` workflow tests, builds, checks the tarball, then runs `npm publish`. After it is green:
-
-```bash
-npx command-go-pool
-```
+Then add the Trusted Publisher on the package page. Later versions go out from GitHub on `v*` tags.
 
 ## Later releases
 
