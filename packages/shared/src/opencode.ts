@@ -45,6 +45,7 @@ export function writeOpenCodeConfig(opts: WriteOpenCodeOptions): string {
     `Base URL: ${opts.baseUrl}`,
     `Models: ${opts.models.map((m) => m.id).join(", ") || "(none)"}`,
     "Unrelated providers were left untouched.",
+    "Pool usage: GET /v1/usage",
   ].join("\n");
 }
 

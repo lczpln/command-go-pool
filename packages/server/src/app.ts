@@ -5,7 +5,13 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openaiChatSchema, openaiToNormalized, openaiChunkFrame, openaiFinal } from "@command-go-pool/protocol-openai";
-import { anthropicMessageSchema, anthropicToNormalized, anthropicStreamFrames, anthropicFinal } from "@command-go-pool/protocol-anthropic";
+import {
+  anthropicMessageSchema,
+  anthropicToNormalized,
+  anthropicStreamFrames,
+  anthropicFinal,
+  isAnthropicQuotaProbe,
+} from "@command-go-pool/protocol-anthropic";
 import {
   OPENCODE_FALLBACK_MODELS,
   catalogModels,
@@ -17,7 +23,14 @@ import {
   writeOpenCodeConfig,
   type AppConfig,
 } from "@command-go-pool/shared";
-import { subsidyMultiplier } from "@command-go-pool/quota-engine";
+import {
+  aggregatePool,
+  subsidyMultiplier,
+  clientUsageHeaders,
+  claudeOauthUsage,
+  openCodeUsage,
+  type ClientQuota,
+} from "@command-go-pool/quota-engine";
 import { saveConfig } from "@command-go-pool/storage";
 import { emit, executeRequest, overview, type Runtime } from "./runtime.js";
 import { mergeQuota } from "./health.js";
@@ -53,6 +66,26 @@ function nowRollup(runtime: Runtime, accountId: string, windowMs: number) {
   return runtime.usage.rollup(Date.now() - windowMs, "account").find((row) => String(row.key) === accountId) as
     | { requests?: number; inputTokens?: number; cacheReadTokens?: number; estimatedCost?: number | null }
     | undefined;
+}
+
+function clientQuota(runtime: Runtime, accountId?: string): ClientQuota {
+  if (accountId) return runtime.pool.get(accountId)?.quota ?? {};
+  return aggregatePool(runtime.pool.list());
+}
+
+function applyUsageHeaders(reply: { header(name: string, value: string): unknown }, quota: ClientQuota) {
+  for (const [key, value] of Object.entries(clientUsageHeaders(quota))) {
+    reply.header(key, value);
+  }
+}
+
+function sseHead(quota: ClientQuota): Record<string, string> {
+  return {
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-cache",
+    connection: "keep-alive",
+    ...clientUsageHeaders(quota),
+  };
 }
 
 export async function buildApp(runtime: Runtime) {
@@ -108,6 +141,26 @@ export async function buildApp(runtime: Runtime) {
     return { object: "list", data: exposedInferenceModels(ids, runtime.config) };
   });
 
+  app.get("/v1/usage", async (req, reply) => {
+    const query = req.query as { account?: string };
+    if (query.account && !runtime.pool.get(query.account)) {
+      return reply.code(404).send({ error: { message: "account not found", type: "invalid_request_error" } });
+    }
+    const quota = clientQuota(runtime, query.account);
+    applyUsageHeaders(reply, quota);
+    return openCodeUsage(quota);
+  });
+
+  app.get("/api/oauth/usage", async (req, reply) => {
+    const query = req.query as { account?: string };
+    if (query.account && !runtime.pool.get(query.account)) {
+      return reply.code(404).send({ error: { message: "account not found", type: "invalid_request_error" } });
+    }
+    const quota = clientQuota(runtime, query.account);
+    applyUsageHeaders(reply, quota);
+    return claudeOauthUsage(quota);
+  });
+
   app.post("/v1/chat/completions", async (req, reply) => {
     const parsed = openaiChatSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -127,13 +180,10 @@ export async function buildApp(runtime: Runtime) {
     const { stream } = executeRequest(runtime, normalized, headers, abort.signal);
     const id = newId("chatcmpl");
     const created = Math.floor(Date.now() / 1000);
+    const quota = clientQuota(runtime);
     if (normalized.stream) {
       reply.hijack();
-      reply.raw.writeHead(200, {
-        "content-type": "text/event-stream; charset=utf-8",
-        "cache-control": "no-cache",
-        connection: "keep-alive",
-      });
+      reply.raw.writeHead(200, sseHead(quota));
       try {
         for await (const chunk of stream) {
           if (chunk.type === "error") {
@@ -163,6 +213,7 @@ export async function buildApp(runtime: Runtime) {
       if (chunk.type === "tool-call") tools.push({ id: chunk.id, name: chunk.name, arguments: JSON.stringify(chunk.arguments ?? {}) });
       if (chunk.type === "finish") usage = chunk.usage;
     }
+    applyUsageHeaders(reply, quota);
     return openaiFinal(id, normalized.model, created, text, tools, usage, reasoning);
   });
 
@@ -178,6 +229,24 @@ export async function buildApp(runtime: Runtime) {
         error: { type: "unsupported_model", message: `Model ${parsed.data.model} is disabled` },
       });
     }
+    const quota = clientQuota(runtime);
+    if (isAnthropicQuotaProbe(parsed.data)) {
+      const id = newId("msg");
+      const model = parsed.data.model;
+      if (normalized.stream) {
+        reply.hijack();
+        reply.raw.writeHead(200, sseHead(quota));
+        const state = { started: false, block: 0 };
+        reply.raw.write(anthropicStreamFrames(id, model, { type: "text-delta", text: "." }, state));
+        reply.raw.write(
+          anthropicStreamFrames(id, model, { type: "finish", reason: "stop", usage: { inputTokens: 1, outputTokens: 1 } }, state),
+        );
+        reply.raw.end();
+        return;
+      }
+      applyUsageHeaders(reply, quota);
+      return anthropicFinal(id, model, ".", [], { inputTokens: 1, outputTokens: 1 });
+    }
     const headers = headerMap(req.headers);
     const abort = new AbortController();
     reply.raw.on("close", () => {
@@ -187,11 +256,7 @@ export async function buildApp(runtime: Runtime) {
     const id = newId("msg");
     if (normalized.stream) {
       reply.hijack();
-      reply.raw.writeHead(200, {
-        "content-type": "text/event-stream; charset=utf-8",
-        "cache-control": "no-cache",
-        connection: "keep-alive",
-      });
+      reply.raw.writeHead(200, sseHead(quota));
       const state = { started: false, block: 0 };
       try {
         for await (const chunk of stream) {
@@ -217,6 +282,7 @@ export async function buildApp(runtime: Runtime) {
       if (chunk.type === "tool-call") tools.push({ id: chunk.id, name: chunk.name, arguments: chunk.arguments });
       if (chunk.type === "finish") usage = chunk.usage;
     }
+    applyUsageHeaders(reply, quota);
     return anthropicFinal(id, normalized.model, text, tools, usage);
   });
 
@@ -371,6 +437,7 @@ export async function buildApp(runtime: Runtime) {
       today: runtime.usage.rollup(day, undefined, scoped)[0],
       week: runtime.usage.rollup(week, undefined, scoped)[0],
       month: monthRollup,
+      windows: clientQuota(runtime, filter.accountId),
       byAccount: runtime.usage.rollup(month, "account", scoped),
       byModel: runtime.usage.rollup(month, "model", scoped),
       bySession: runtime.usage.rollup(month, "session", scoped),

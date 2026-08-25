@@ -267,8 +267,13 @@ Base URL: `http://127.0.0.1:8787/v1`
 | `GET` | `/v1/models` | OpenAI-style catalog |
 | `POST` | `/v1/chat/completions` | OpenAI Chat Completions (SSE when `stream: true`) |
 | `POST` | `/v1/messages` | Anthropic Messages (SSE when `stream: true`) |
+| `GET` | `/v1/usage` | Pooled 5h / weekly / monthly windows (OpenCode Go shape) |
 
 `GET /v1/models` is the union of models usable by at least one **available** account, minus `config.models.disabled`. Aliases (`flash`, `vision`, `pro`) appear only when their target is enabled. Disabled or unknown models return `400 unsupported_model` — the pool never silently substitutes.
+
+Inference responses also carry Anthropic `anthropic-ratelimit-unified-*` headers (and OpenAI `x-ratelimit-*` when a window is known) so Claude Code `/usage` can render the same meters. Unknown windows are omitted — the pool will not invent a percentage.
+
+`GET /api/oauth/usage` is the Claude Code OAuth usage JSON (`five_hour` / `seven_day`). Same auth rules as other `/api` routes. Dashboard rollups stay on `GET /api/usage`.
 
 ### Auth
 
@@ -398,6 +403,14 @@ Manual provider (model ids come from the pool):
 
 If you set `COMMAND_GO_POOL_API_KEY`, use that value as `apiKey` instead of `pool-managed`.
 
+Pool quota for OpenCode and plugins:
+
+```bash
+curl -s http://127.0.0.1:8787/v1/usage
+```
+
+Returns `{ usage: { rolling, weekly, monthly } }` with used `percent` and `resetsAt`, matching OpenCode Go. A window Command Code did not report is `{ "status": "unavailable" }`.
+
 ### Claude Code
 
 ```bash
@@ -419,6 +432,17 @@ export ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek/deepseek-v4-pro
 export ANTHROPIC_DEFAULT_OPUS_MODEL=deepseek/deepseek-v4-pro
 export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek/deepseek-v4-flash
 ```
+
+`/usage` in Claude Code reads `anthropic-ratelimit-unified-*` headers on `POST /v1/messages`. The pool sets those from aggregated account windows. A `max_tokens: 1` ping whose only user text is `quota` is answered locally so it does not spend Go quota.
+
+JSON for scripts and statuslines:
+
+```bash
+curl -s http://127.0.0.1:8787/api/oauth/usage
+curl -s http://127.0.0.1:8787/v1/usage
+```
+
+More detail: [`docs/claude.md`](docs/claude.md).
 
 ### Other OpenAI-compatible clients
 
@@ -586,6 +610,7 @@ CI (`.github/workflows/ci.yml`) runs install, unit tests, build, and Playwright 
 | [`docs/architecture.md`](docs/architecture.md) | ADRs: transport isolation, sticky sessions, quota honesty, secrets |
 | [`docs/api-contracts.md`](docs/api-contracts.md) | `/v1` inference and `/api` admin routes |
 | [`docs/opencode.md`](docs/opencode.md) | OpenCode setup details |
+| [`docs/claude.md`](docs/claude.md) | Claude Code setup and `/usage` |
 | [`docs/troubleshooting.md`](docs/troubleshooting.md) | Auth, quota, Docker, protocol drift |
 | [`docs/schema.md`](docs/schema.md) | SQLite tables |
 | [`docs/research.md`](docs/research.md) | Upstream Command Code behavior |
