@@ -191,3 +191,12 @@ export function subsidyMultiplier(paid: number, consumed: number): number | unde
   if (consumed === 0) return 0;
   return consumed / paid;
 }
+
+export {
+  usedRatio,
+  rateLimitStatus,
+  clientUsageHeaders,
+  claudeOauthUsage,
+  openCodeUsage,
+} from "./client-usage.js";
+export type { ClientQuota, RateLimitStatus, OpenCodeUsageWindow } from "./client-usage.js";

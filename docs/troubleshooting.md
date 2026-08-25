@@ -19,6 +19,16 @@ Command Code may omit rolling-window fields on the API-key billing surface. The 
 
 `~61%` or “Estimated from local usage” means the number is derived from observed tokens/cost, not an upstream meter. Exact values come from billing/window payloads.
 
+## Claude Code / OpenCode usage is empty
+
+The dashboard **Usage** page is local request rollups (`GET /api/usage`). Client `/usage` meters come from pooled quota windows:
+
+- Claude Code reads `anthropic-ratelimit-unified-*` on `POST /v1/messages`. Inspect an account (or wait for the health refresh) so `/alpha/billing/credits` windows are stored.
+- OpenCode and scripts: `GET /v1/usage`. Unknown windows return `"status": "unavailable"`.
+- Claude Code JSON: `GET /api/oauth/usage`. Unknown buckets are `null`.
+
+If every account still shows Unavailable 5h/weekly bars on the dashboard, clients will not get those meters either.
+
 ## Streaming hangs before first token
 
 Reasoning models often emit `reasoning-delta` for several seconds before text. That is upstream behavior. Idle timeout (default 120s) closes a stalled stream.

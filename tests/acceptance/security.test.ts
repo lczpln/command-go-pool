@@ -50,7 +50,7 @@ describe("security gates", () => {
         boot.runtime.pool.add({ label: "Go #01", apiKey: secret });
       },
     });
-    const paths = ["/api/accounts", "/api/config", "/api/events", "/api/health", "/api/sessions", "/api/usage"];
+    const paths = ["/api/accounts", "/api/config", "/api/events", "/api/health", "/api/sessions", "/api/usage", "/api/oauth/usage", "/v1/usage"];
     for (const path of paths) {
       const res = await instance.app.inject({ method: "GET", url: path });
       expect(res.statusCode).toBe(200);

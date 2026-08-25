@@ -47,6 +47,22 @@ export const anthropicMessageSchema = z.object({
 
 export type AnthropicMessageRequest = z.infer<typeof anthropicMessageSchema>;
 
+export function isAnthropicQuotaProbe(body: AnthropicMessageRequest): boolean {
+  if (body.max_tokens !== 1) return false;
+  if (body.tools && body.tools.length > 0) return false;
+  if (body.messages.length !== 1) return false;
+  const message = body.messages[0];
+  if (!message || message.role !== "user") return false;
+  let text: string | undefined;
+  if (typeof message.content === "string") {
+    text = message.content;
+  } else {
+    const part = message.content[0];
+    if (message.content.length === 1 && part?.type === "text") text = part.text;
+  }
+  return text?.trim().toLowerCase() === "quota";
+}
+
 export function anthropicToNormalized(body: AnthropicMessageRequest, aliases: Record<string, string>): NormalizedRequest {
   const system = typeof body.system === "string" ? body.system : body.system?.map((b) => b.text).join("\n");
   const messages: NormalizedMessage[] = [];
