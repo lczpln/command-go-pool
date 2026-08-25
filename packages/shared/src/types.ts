@@ -199,6 +199,7 @@ export interface CommandCodeTransport {
   ): AsyncIterable<NormalizedChunk>;
   getAccountStatus(account: AccountCredential, signal?: AbortSignal): Promise<AccountStatusSnapshot>;
   testCredential(account: AccountCredential): Promise<AuthResult>;
+  close?(): Promise<void> | void;
 }
 
 export interface PoolEvent {

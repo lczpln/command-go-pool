@@ -30,6 +30,7 @@ export interface Runtime {
   inflightGenerates: number;
   inflightByAccount: Map<string, number>;
   healthAbort?: AbortController;
+  shutdown: AbortController;
 }
 
 export function emit(runtime: Runtime, partial: Omit<PoolEvent, "id" | "at">): PoolEvent {
@@ -70,7 +71,8 @@ export function executeRequest(
       payload: { sessionId: first.session.id, accountId: first.account.id, model: request.model },
     });
   }
-  const stream = pump(runtime, request, headers, signal, first.session, first.account, exclude);
+  const combined = signal ? AbortSignal.any([signal, runtime.shutdown.signal]) : runtime.shutdown.signal;
+  const stream = pump(runtime, request, headers, combined, first.session, first.account, exclude);
   return { stream, session: first.session, account: first.account };
 }
 

@@ -72,7 +72,7 @@ export class MockTransport implements CommandCodeTransport {
         yield { type: "error", error: failure("client_cancelled", "Request cancelled") };
         return;
       }
-      if (scenario.delayMs) await new Promise((r) => setTimeout(r, scenario.delayMs));
+      if (scenario.delayMs) await sleep(scenario.delayMs, signal);
       if (scenario.errorAfter !== undefined && i >= scenario.errorAfter) {
         yield typeof chunks[scenario.errorAfter] === "object" && chunks[scenario.errorAfter]?.type === "error"
           ? chunks[scenario.errorAfter]!
@@ -86,4 +86,27 @@ export class MockTransport implements CommandCodeTransport {
   private scenario(account: AccountCredential): MockScenario {
     return this.byAccount.get(account.accountId) ?? this.byAccount.get("*") ?? {};
   }
+}
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const abort = () => {
+      const error = new Error("The operation was aborted");
+      error.name = "AbortError";
+      reject(error);
+    };
+    if (signal?.aborted) {
+      abort();
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      abort();
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }

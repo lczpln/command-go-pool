@@ -34,10 +34,9 @@ export class SqliteBridge {
         this.failAll(error);
       });
       this.worker.once("exit", (code) => {
-        if (this.closed || code === 0) return;
         const error = new Error(`SQLite worker exited with code ${code}`);
-        reject(error);
         this.failAll(error);
+        if (code !== 0) reject(error);
       });
     });
   }
@@ -71,17 +70,18 @@ export class SqliteBridge {
     void this.call(op, args).catch(() => undefined);
   }
 
-  async close(): Promise<void> {
+  async close(timeoutMs = 2_000): Promise<void> {
     if (this.closed) return;
+    this.closed = true;
     await this.ready.catch(() => undefined);
-    await this.drainPending();
+    await raceTimeout(this.drainPending(), timeoutMs);
+    this.failAll(new Error("SQLite worker is closed"));
     try {
-      await this.call("__close__");
+      this.worker.postMessage({ id: this.nextId++, op: "__close__", args: [] });
     } catch {
       /* worker may already be gone */
     }
-    this.closed = true;
-    await this.worker.terminate();
+    await raceTimeout(this.worker.terminate().then(() => undefined), timeoutMs);
   }
 
   private drainPending(): Promise<void> {
@@ -118,6 +118,22 @@ export async function openSqliteBridge(home?: string): Promise<SqliteBridge> {
   const bridge = new SqliteBridge(worker);
   await bridge.waitUntilReady();
   return bridge;
+}
+
+function raceTimeout(promise: Promise<unknown>, ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    promise.then(
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+    );
+  });
 }
 
 function resolveSqlite3(): string | undefined {

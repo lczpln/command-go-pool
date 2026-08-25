@@ -20,6 +20,7 @@ import { compactStatus, startupBanner } from "./banner.js";
 import { onboard } from "./onboard.js";
 import { doctor } from "./doctor.js";
 import { isInteractive, maybeWireClients, wireClientsWizard } from "./clients.js";
+import { createShutdown } from "./shutdown.js";
 
 function poolFromDisk() {
   const db = openDatabase();
@@ -58,10 +59,7 @@ async function cmdStart() {
     console.log("No Command Code accounts yet.");
     console.log(`Open ${dashboard} → Accounts and paste a Studio API key.\n`);
   }
-  const stop = async () => {
-    await instance.close();
-    process.exit(0);
-  };
+  const { stop } = createShutdown(() => instance.close());
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
 }

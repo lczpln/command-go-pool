@@ -73,10 +73,12 @@ export async function boot(options: BootOptions = {}) {
     startedAt: Date.now(),
     inflightGenerates: 0,
     inflightByAccount: new Map(),
+    shutdown: new AbortController(),
   };
   syncSessionLoad(runtime);
   const app = await buildApp(runtime);
   let stopHealth: (() => void) | undefined;
+  let closed = false;
   return {
     runtime,
     app,
@@ -86,11 +88,35 @@ export async function boot(options: BootOptions = {}) {
       stopHealth = startHealthMonitor(runtime);
     },
     async close() {
+      if (closed) return;
+      closed = true;
       stopHealth?.();
-      await bridge.close();
-      await app.close();
+      runtime.shutdown.abort();
+      await raceTimeout(app.close(), 5_000);
+      try {
+        await runtime.transport.close?.();
+      } catch {
+        /* ignore */
+      }
+      await raceTimeout(bridge.close(), 5_000);
     },
   };
+}
+
+function raceTimeout(promise: Promise<unknown>, ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    promise.then(
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+    );
+  });
 }
 
 export type { Runtime } from "./runtime.js";

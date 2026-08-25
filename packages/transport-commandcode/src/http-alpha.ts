@@ -144,6 +144,10 @@ export class HttpAlphaTransport implements CommandCodeTransport {
     }
   }
 
+  async close(): Promise<void> {
+    await Promise.allSettled([this.generateAgent.destroy(), this.healthAgent.destroy()]);
+  }
+
   private async request(
     account: AccountCredential,
     method: string,

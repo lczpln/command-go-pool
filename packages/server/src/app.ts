@@ -115,7 +115,10 @@ function sseHead(quota: ClientQuota): Record<string, string> {
 }
 
 export async function buildApp(runtime: Runtime) {
-  const app = Fastify({ loggerInstance: runtime.log });
+  const app = Fastify({ loggerInstance: runtime.log, forceCloseConnections: true });
+  app.addHook("preClose", async () => {
+    runtime.shutdown.abort();
+  });
 
   app.addHook("onRequest", async (req, reply) => {
     const path = req.url.split("?")[0] ?? "";
