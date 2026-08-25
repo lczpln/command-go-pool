@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from "vue-router";
-import { useLive, store } from "./composables/usePool";
+import { useLive } from "./composables/usePool";
 
 useLive();
 
 const links = [
   { to: "/", label: "Overview" },
   { to: "/accounts", label: "Accounts" },
+  { to: "/models", label: "Models" },
   { to: "/sessions", label: "Sessions" },
   { to: "/usage", label: "Usage" },
   { to: "/events", label: "Events" },
@@ -32,9 +33,6 @@ const links = [
             {{ link.label }}
           </RouterLink>
         </nav>
-        <p class="mt-8 hidden font-mono text-[11px] text-mist md:block">
-          {{ store.accounts.length }} accounts
-        </p>
       </aside>
       <main class="min-w-0 flex-1 pb-10">
         <RouterView />

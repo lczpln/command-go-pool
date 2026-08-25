@@ -5,6 +5,7 @@ import { store, patchAccount } from "../composables/usePool";
 import QuotaBar from "../components/QuotaBar.vue";
 import StatusPill from "../components/StatusPill.vue";
 import ModelBadges from "../components/ModelBadges.vue";
+import Skeleton from "../components/Skeleton.vue";
 
 const route = useRoute();
 const account = computed(() => store.accounts.find((a) => a.id === route.params.id));
@@ -40,7 +41,30 @@ async function rotate() {
 </script>
 
 <template>
-  <div v-if="account" class="space-y-4">
+  <div v-if="!store.ready" class="space-y-4" role="status" aria-label="Loading account">
+    <RouterLink to="/accounts" class="font-mono text-[11px] text-mist">← Accounts</RouterLink>
+    <header class="flex items-baseline justify-between">
+      <Skeleton class="h-5 w-32" />
+      <Skeleton class="h-3 w-16" />
+    </header>
+    <div class="space-y-2 border border-line bg-panel p-3">
+      <div v-for="i in 3" :key="i" class="grid grid-cols-[3.2rem_1fr_auto] items-center gap-2">
+        <Skeleton class="h-2.5 w-8" />
+        <Skeleton class="h-[7px] w-full" />
+        <Skeleton class="h-2.5 w-16" />
+      </div>
+    </div>
+    <div class="flex gap-1">
+      <Skeleton v-for="i in 3" :key="i" class="h-5 w-28" />
+    </div>
+    <section>
+      <h2 class="mb-2 text-sm">Sessions</h2>
+      <div class="space-y-1">
+        <Skeleton v-for="i in 3" :key="i" class="h-9 w-full" />
+      </div>
+    </section>
+  </div>
+  <div v-else-if="account" class="space-y-4">
     <RouterLink to="/accounts" class="font-mono text-[11px] text-mist">← Accounts</RouterLink>
     <header class="flex items-baseline justify-between">
       <h1 class="font-mono text-lg">{{ account.label }}</h1>

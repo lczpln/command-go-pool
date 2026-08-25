@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { store } from "../composables/usePool";
+import Skeleton from "../components/Skeleton.vue";
 
 const filter = ref("all");
 const filtered = computed(() => {
@@ -52,7 +53,13 @@ function describe(event: (typeof store.events)[number]): string {
         <option>authentication</option>
       </select>
     </div>
-    <ol class="space-y-1 font-mono text-[12px]">
+    <ol v-if="!store.ready" class="space-y-1" role="status" aria-label="Loading events">
+      <li v-for="i in 8" :key="i" class="grid grid-cols-[6.5rem_1fr] gap-3 border-b border-line/60 py-2">
+        <Skeleton class="h-3 w-16" />
+        <Skeleton class="h-3 w-full max-w-xl" />
+      </li>
+    </ol>
+    <ol v-else class="space-y-1 font-mono text-[12px]">
       <li v-for="event in filtered" :key="event.id" class="grid grid-cols-[6.5rem_1fr] gap-3 border-b border-line/60 py-1">
         <time class="text-mist">{{ new Date(event.at).toLocaleTimeString() }}</time>
         <span :class="event.level === 'error' ? 'text-bad' : event.level === 'warning' ? 'text-warn' : 'text-paper'">

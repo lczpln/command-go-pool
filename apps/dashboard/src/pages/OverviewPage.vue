@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { store, patchAccount, removeAccount } from "../composables/usePool";
+import StatusDot from "../components/StatusDot.vue";
 import PoolQuota from "../components/PoolQuota.vue";
 import AccountCard from "../components/AccountCard.vue";
 import AddAccountForm from "../components/AddAccountForm.vue";
+import StatGridSkeleton from "../components/StatGridSkeleton.vue";
+import PoolQuotaSkeleton from "../components/PoolQuotaSkeleton.vue";
+import AccountCardSkeleton from "../components/AccountCardSkeleton.vue";
 
 const overview = computed(() => store.overview ?? {});
 const pool = computed(() => (overview.value.pool ?? {}) as Record<string, unknown>);
@@ -29,12 +33,14 @@ async function remove(id: string, label: string) {
         <p class="font-mono text-[11px] tracking-[0.25em] text-mist">COMMAND GO POOL</p>
         <h1 class="mt-1 text-xl tracking-tight">Local inference gateway</h1>
       </div>
-      <p class="font-mono text-[12px]" :class="store.connected ? 'text-ok' : 'text-mist'">
-        ● {{ store.connected ? "RUNNING" : "CONNECTING" }}
+      <p class="inline-flex items-center gap-1.5 font-mono text-[12px]" :class="store.connected ? 'text-ok' : 'text-mist'">
+        <StatusDot />
+        {{ store.connected ? "RUNNING" : "CONNECTING" }}
       </p>
     </header>
 
-    <section class="grid grid-cols-2 gap-px bg-line md:grid-cols-4">
+    <StatGridSkeleton v-if="!store.ready" />
+    <section v-else class="grid grid-cols-2 gap-px bg-line md:grid-cols-4">
       <div v-for="item in [
         { k: 'Accounts', v: overview.accounts ?? 0 },
         { k: 'Available', v: overview.available ?? 0 },
@@ -46,16 +52,21 @@ async function remove(id: string, label: string) {
       </div>
     </section>
 
-    <AddAccountForm v-if="store.accounts.length === 0" />
+    <AddAccountForm v-if="store.ready && store.accounts.length === 0" />
 
+    <PoolQuotaSkeleton v-if="!store.ready" />
     <PoolQuota
+      v-else
       :five-hour="pool.fiveHour as never"
       :weekly="pool.weekly as never"
       :monthly="pool.monthly as never"
       :credits="credits"
     />
 
-    <section class="grid gap-3 md:grid-cols-2">
+    <section v-if="!store.ready" class="grid gap-3 md:grid-cols-2" role="status" aria-label="Loading accounts">
+      <AccountCardSkeleton v-for="i in 4" :key="i" />
+    </section>
+    <section v-else class="grid gap-3 md:grid-cols-2">
       <AccountCard
         v-for="account in store.accounts"
         :key="account.id"

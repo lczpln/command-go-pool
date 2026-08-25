@@ -48,6 +48,13 @@ export interface Session {
   migrations: number;
 }
 
+export interface CatalogModel {
+  id: string;
+  enabled: boolean;
+  accountIds: string[];
+  aliasOf?: string;
+}
+
 export const store = reactive({
   overview: null as null | Record<string, unknown>,
   accounts: [] as Account[],
@@ -55,7 +62,9 @@ export const store = reactive({
   usage: null as null | Record<string, unknown>,
   events: [] as Array<{ id: number; at: string; level: string; category: string; type: string; payload: Record<string, unknown> }>,
   config: null as null | Record<string, unknown>,
+  models: [] as CatalogModel[],
   connected: false,
+  ready: false,
 });
 
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
@@ -107,14 +116,34 @@ export async function saveProxyApiKey(apiKey: string) {
   await refreshAll();
 }
 
+export async function patchModel(id: string, body: { enabled: boolean }) {
+  const result = await json<{ models: CatalogModel[] }>("/api/models", {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id, ...body }),
+  });
+  store.models = result.models;
+  await refreshAll();
+}
+
+export async function syncOpenCode() {
+  const result = await json<{ ok: boolean; file: string; message: string; models: string[]; warning?: string }>("/api/setup/opencode", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  return result;
+}
+
 export async function refreshAll() {
-  const [health, accounts, sessions, usage, events, config] = await Promise.all([
+  const [health, accounts, sessions, usage, events, config, models] = await Promise.all([
     json<Record<string, unknown>>("/api/health"),
     json<{ accounts: Account[] }>("/api/accounts"),
     json<{ sessions: Session[] }>("/api/sessions"),
     json<Record<string, unknown>>("/api/usage"),
     json<{ events: typeof store.events }>("/api/events"),
     json<{ config: Record<string, unknown> }>("/api/config"),
+    json<{ models: CatalogModel[] }>("/api/models"),
   ]);
   store.overview = health;
   store.accounts = accounts.accounts;
@@ -122,12 +151,15 @@ export async function refreshAll() {
   store.usage = usage;
   store.events = events.events;
   store.config = config.config;
+  store.models = models.models;
+  store.ready = true;
 }
 
 export function useLive() {
   let es: EventSource | undefined;
   onMounted(async () => {
     await refreshAll().catch(() => undefined);
+    store.ready = true;
     es = new EventSource("/api/events/stream");
     es.onopen = () => {
       store.connected = true;
@@ -138,7 +170,7 @@ export function useLive() {
     const bump = () => {
       void refreshAll();
     };
-    for (const name of ["account.updated", "account.cooldown", "account.recovered", "session.started", "session.migrated", "session.ended", "usage.updated", "proxy.error", "hello"]) {
+    for (const name of ["account.updated", "account.cooldown", "account.recovered", "session.started", "session.migrated", "session.ended", "usage.updated", "proxy.error", "models.updated", "hello"]) {
       es.addEventListener(name, bump);
     }
   });

@@ -2,16 +2,23 @@
 import { computed, onMounted, ref } from "vue";
 import { useRoute, RouterLink } from "vue-router";
 import { store } from "../composables/usePool";
+import Skeleton from "../components/Skeleton.vue";
 
 const route = useRoute();
 const bindings = ref<{ accountId: string; reason: string | null; at: number }[]>([]);
+const bindingsReady = ref(false);
 const session = computed(() => store.sessions.find((s) => s.id === route.params.id));
 
 onMounted(async () => {
-  const res = await fetch(`/api/sessions/${route.params.id}`);
-  if (!res.ok) return;
-  const body = (await res.json()) as { migrations: typeof bindings.value };
-  bindings.value = body.migrations;
+  try {
+    const res = await fetch(`/api/sessions/${route.params.id}`);
+    if (res.ok) {
+      const body = (await res.json()) as { migrations: typeof bindings.value };
+      bindings.value = body.migrations;
+    }
+  } finally {
+    bindingsReady.value = true;
+  }
 });
 
 function label(id: string) {
@@ -25,7 +32,23 @@ function hit(s: { inputTokens: number; cacheReadTokens: number }) {
 </script>
 
 <template>
-  <div v-if="session" class="space-y-4 font-mono text-[12px]">
+  <div v-if="!store.ready" class="space-y-4 font-mono text-[12px]" role="status" aria-label="Loading session">
+    <RouterLink to="/sessions" class="text-mist">← Sessions</RouterLink>
+    <Skeleton class="h-5 w-40" />
+    <dl class="grid grid-cols-2 gap-2 md:grid-cols-3">
+      <div v-for="i in 7" :key="i">
+        <Skeleton class="h-2.5 w-14" />
+        <Skeleton class="mt-1 h-3 w-24" />
+      </div>
+    </dl>
+    <section>
+      <h2 class="mb-2 text-sm">Migration timeline</h2>
+      <div class="space-y-2">
+        <Skeleton v-for="i in 3" :key="i" class="h-6 w-full" />
+      </div>
+    </section>
+  </div>
+  <div v-else-if="session" class="space-y-4 font-mono text-[12px]">
     <RouterLink to="/sessions" class="text-mist">← Sessions</RouterLink>
     <h1 class="text-lg text-paper">{{ session.id }}</h1>
     <dl class="grid grid-cols-2 gap-2 md:grid-cols-3">
@@ -39,7 +62,10 @@ function hit(s: { inputTokens: number; cacheReadTokens: number }) {
     </dl>
     <section>
       <h2 class="mb-2 text-sm">Migration timeline</h2>
-      <ol v-if="bindings.length" class="space-y-1">
+      <div v-if="!bindingsReady" class="space-y-2" role="status" aria-label="Loading timeline">
+        <Skeleton v-for="i in 3" :key="i" class="h-6 w-full" />
+      </div>
+      <ol v-else-if="bindings.length" class="space-y-1">
         <li v-for="(bind, i) in bindings" :key="i" class="border-l border-line pl-3">
           {{ new Date(bind.at).toLocaleTimeString() }} · {{ label(bind.accountId) }}
           <span class="text-mist">{{ bind.reason }}</span>

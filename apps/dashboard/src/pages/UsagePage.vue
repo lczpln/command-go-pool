@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { store } from "../composables/usePool";
+import StatGridSkeleton from "../components/StatGridSkeleton.vue";
+import Skeleton from "../components/Skeleton.vue";
 
 const usage = computed(() => store.usage ?? {});
 const series = computed(() => (usage.value.series as { t: number; tokens: number }[] | undefined) ?? []);
@@ -39,51 +41,70 @@ function tokens(n?: number) {
 <template>
   <div class="space-y-6">
     <h1 class="text-lg">Usage</h1>
-    <section class="grid grid-cols-2 gap-px bg-line md:grid-cols-4">
-      <div class="bg-ink p-3" v-for="card in [
-        { k: 'Requests (30d)', v: month.requests ?? 0 },
-        { k: 'Cache hit', v: usage.cacheHit ? `${((usage.cacheHit as number) * 100).toFixed(1)}%` : '—' },
-        { k: 'Paid', v: usage.paid ? `$${(usage.paid as number).toFixed(2)}` : '—' },
-        { k: 'Subsidy', v: usage.subsidy ? `${(usage.subsidy as number).toFixed(2)}×` : '—' },
-      ]" :key="card.k">
-        <p class="font-mono text-[11px] uppercase tracking-wider text-mist">{{ card.k }}</p>
-        <p class="mt-1 font-mono text-xl text-amber">{{ card.v }}</p>
-      </div>
-    </section>
-    <p class="font-mono text-[11px] text-mist">
-      Cache read {{ tokens(month.cacheReadTokens) }} · Uncached input {{ tokens(month.inputTokens) }}
-      <span v-if="usage.consumed"> · Estimated inference {{ money(usage.consumed as number) }}</span>
-    </p>
-    <p v-if="usage.subsidy" class="font-mono text-[11px] text-mist">
-      Subsidy uses configured subscription cost and measured consumption. Monetary values are estimates unless marked exact.
-    </p>
-    <section class="border border-line bg-panel p-3">
-      <p class="mb-3 font-mono text-[11px] uppercase tracking-wider text-mist">Tokens this week</p>
-      <div class="flex h-32 items-end gap-px">
-        <div
-          v-for="point in series"
-          :key="point.t"
-          class="flex-1 bg-amber/80"
-          :style="{ height: `${(point.tokens / max) * 100}%` }"
-          :title="new Date(point.t).toISOString()"
-        />
-      </div>
-    </section>
-    <section class="grid gap-4 md:grid-cols-3">
-      <div v-for="group in [
-        { title: 'By account', rows: byAccount, name: (r: Rollup) => label(r.key) },
-        { title: 'By model', rows: byModel, name: (r: Rollup) => r.key ?? '—' },
-        { title: 'By session', rows: bySession, name: (r: Rollup) => r.key ?? '—' },
-      ]" :key="group.title">
-        <h2 class="mb-2 text-sm">{{ group.title }}</h2>
-        <ol class="space-y-1 font-mono text-[11px]">
-          <li v-for="row in group.rows" :key="String(row.key)" class="flex justify-between border-b border-line/60 py-1">
-            <span class="truncate pr-2">{{ group.name(row) }}</span>
-            <span class="text-mist">{{ row.requests ?? 0 }} · {{ money(row.estimatedCost) }}</span>
-          </li>
-          <li v-if="group.rows.length === 0" class="text-mist">No usage yet.</li>
-        </ol>
-      </div>
-    </section>
+    <template v-if="!store.ready">
+      <StatGridSkeleton />
+      <Skeleton class="h-3 w-80" />
+      <section class="border border-line bg-panel p-3">
+        <Skeleton class="mb-3 h-2.5 w-28" />
+        <Skeleton class="h-32 w-full" />
+      </section>
+      <section class="grid gap-4 md:grid-cols-3">
+        <div v-for="i in 3" :key="i">
+          <Skeleton class="mb-3 h-3.5 w-24" />
+          <div class="space-y-2">
+            <Skeleton v-for="j in 4" :key="j" class="h-6 w-full" />
+          </div>
+        </div>
+      </section>
+    </template>
+    <template v-else>
+      <section class="grid grid-cols-2 gap-px bg-line md:grid-cols-4">
+        <div class="bg-ink p-3" v-for="card in [
+          { k: 'Requests (30d)', v: month.requests ?? 0 },
+          { k: 'Cache hit', v: usage.cacheHit ? `${((usage.cacheHit as number) * 100).toFixed(1)}%` : '—' },
+          { k: 'Paid', v: usage.paid ? `$${(usage.paid as number).toFixed(2)}` : '—' },
+          { k: 'Subsidy', v: usage.subsidy ? `${(usage.subsidy as number).toFixed(2)}×` : '—' },
+        ]" :key="card.k">
+          <p class="font-mono text-[11px] uppercase tracking-wider text-mist">{{ card.k }}</p>
+          <p class="mt-1 font-mono text-xl text-amber">{{ card.v }}</p>
+        </div>
+      </section>
+      <p class="font-mono text-[11px] text-mist">
+        Cache read {{ tokens(month.cacheReadTokens) }} · Uncached input {{ tokens(month.inputTokens) }}
+        <span v-if="usage.consumed"> · Estimated inference {{ money(usage.consumed as number) }}</span>
+      </p>
+      <p v-if="usage.subsidy" class="font-mono text-[11px] text-mist">
+        Subsidy uses configured subscription cost and measured consumption. Monetary values are estimates unless marked exact.
+      </p>
+      <section class="border border-line bg-panel p-3">
+        <p class="mb-3 font-mono text-[11px] uppercase tracking-wider text-mist">Tokens this week</p>
+        <div class="flex h-32 items-end gap-px">
+          <div
+            v-for="point in series"
+            :key="point.t"
+            class="flex-1 bg-amber/80"
+            :style="{ height: `${(point.tokens / max) * 100}%` }"
+            :title="new Date(point.t).toISOString()"
+          />
+        </div>
+      </section>
+      <section class="grid gap-4 md:grid-cols-3">
+        <div v-for="group in [
+          { title: 'By account', rows: byAccount, name: (r: Rollup) => label(r.key) },
+          { title: 'By model', rows: byModel, name: (r: Rollup) => r.key ?? '—' },
+          { title: 'By session', rows: bySession, name: (r: Rollup) => r.key ?? '—' },
+        ]" :key="group.title">
+          <h2 class="mb-2 text-sm">{{ group.title }}</h2>
+          <ol class="space-y-1 font-mono text-[11px]">
+            <li v-for="row in group.rows" :key="String(row.key)" class="flex justify-between border-b border-line/60 py-1">
+              <span class="truncate pr-2">{{ group.name(row) }}</span>
+              <span class="text-mist">{{ row.requests ?? 0 }} · {{ money(row.estimatedCost) }}</span>
+            </li>
+            <li v-if="group.rows.length === 0" class="text-mist">No usage yet.</li>
+          </ol>
+        </div>
+      </section>
+    </template>
   </div>
 </template>
+
