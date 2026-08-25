@@ -42,6 +42,7 @@ export interface Account {
   recentLatencyMs?: number;
   recentErrorRate?: number;
   models?: string[];
+  modelCatalog?: ModelInfo[];
 }
 
 export interface AccountCredential {
@@ -54,6 +55,7 @@ export interface ModelInfo {
   name: string;
   ownedBy?: string;
   contextWindow?: number;
+  outputLimit?: number;
   vision?: boolean;
   reasoning?: boolean;
 }

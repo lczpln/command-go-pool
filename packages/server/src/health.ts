@@ -1,6 +1,6 @@
 import type { Runtime } from "./runtime.js";
 import { emit } from "./runtime.js";
-import type { AccountQuota, QuotaWindow } from "@command-go-pool/shared";
+import { modelInventory, type AccountQuota, type QuotaWindow } from "@command-go-pool/shared";
 
 export function startHealthMonitor(runtime: Runtime): () => void {
   const tick = async () => {
@@ -16,7 +16,7 @@ export function startHealthMonitor(runtime: Runtime): () => void {
           ...current,
           status: status.authenticated ? "available" : "auth_error",
           quota: mergeQuota(current.quota, status.quota),
-          models: status.models.map((m) => m.id),
+          ...modelInventory(status.models),
           recentLatencyMs: status.latencyMs,
         });
         emit(runtime, {
@@ -45,7 +45,7 @@ export function startHealthMonitor(runtime: Runtime): () => void {
         runtime.pool.replace({
           ...current,
           quota: mergeQuota(current.quota, status.quota),
-          models: status.models.map((m) => m.id),
+          ...modelInventory(status.models),
           recentLatencyMs: status.latencyMs,
           status: nextStatus,
         });

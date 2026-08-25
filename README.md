@@ -381,8 +381,6 @@ curl -s http://127.0.0.1:8787/v1/messages \
   }'
 ```
 
-Model aliases from the default config: `flash` → `deepseek/deepseek-v4-flash`, `pro` → `deepseek/deepseek-v4-pro`, `vision` → `deepseek/deepseek-v4-flash-vision-exp`.
-
 Admin routes live under `/api` (health, accounts, models, sessions, usage, events, config). Same auth rules. Contracts: [`docs/api-contracts.md`](docs/api-contracts.md).
 
 ---
@@ -502,10 +500,6 @@ quota:
   refreshIntervalSeconds: 60
 dashboard:
   enabled: true
-aliases:
-  flash: deepseek/deepseek-v4-flash
-  vision: deepseek/deepseek-v4-flash-vision-exp
-  pro: deepseek/deepseek-v4-pro
 models:
   disabled: []                 # model ids hidden from GET /v1/models
 transport:
@@ -566,7 +560,7 @@ Default: `~/.command-go-pool/` (`COMMAND_GO_POOL_HOME` override). If an older `~
 
 | File | Contents |
 | --- | --- |
-| `config.yaml` | Bind, routing, aliases, disabled models, connected CLIs |
+| `config.yaml` | Bind, routing, disabled models, connected CLIs |
 | `state.db` | Accounts metadata, sessions, usage, events |
 | `secrets.bin` | Encrypted Command Code keys |
 | `master.key` | Local wrapping key (unless `COMMAND_GO_POOL_MASTER_KEY` is set) |

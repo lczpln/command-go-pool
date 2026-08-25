@@ -53,6 +53,8 @@ export interface CatalogModel {
   enabled: boolean;
   accountIds: string[];
   aliasOf?: string;
+  locked?: boolean;
+  lockReason?: string;
 }
 
 export interface PoolClient {

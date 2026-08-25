@@ -65,6 +65,94 @@ describe("formatQuotaView", () => {
   });
 });
 
+describe("HttpAlphaTransport.listModels", () => {
+  it("maps capabilities.reasoning from the Command Code catalog", async () => {
+    const transport = new HttpAlphaTransport({
+      apiBase: "https://api.commandcode.ai",
+      cliVersion: "0.52.1",
+      timeoutMs: 5_000,
+      idleTimeoutMs: 1_000,
+      fetchImpl: async (url) => {
+        if (String(url).endsWith("/provider/v1/models")) {
+          return jsonResponse({
+            data: [
+              {
+                id: "deepseek/deepseek-v4-pro",
+                name: "DeepSeek V4 Pro",
+                capabilities: { reasoning: true, vision: false },
+              },
+            ],
+          });
+        }
+        return jsonResponse({});
+      },
+    });
+    const models = await transport.listModels({ accountId: "acc_1", apiKey: "user_test" });
+    expect(models[0]).toMatchObject({ id: "deepseek/deepseek-v4-pro", reasoning: true, vision: false });
+  });
+
+  it("maps context_length from the Command Code catalog", async () => {
+    const transport = new HttpAlphaTransport({
+      apiBase: "https://api.commandcode.ai",
+      cliVersion: "0.52.1",
+      timeoutMs: 5_000,
+      idleTimeoutMs: 1_000,
+      fetchImpl: async (url) => {
+        if (String(url).endsWith("/provider/v1/models")) {
+          return jsonResponse({
+            data: [
+              {
+                id: "anthropic/claude-sonnet-5",
+                name: "Claude Sonnet 5",
+                context_length: 1_000_000,
+              },
+            ],
+          });
+        }
+        return jsonResponse({});
+      },
+    });
+    const models = await transport.listModels({ accountId: "acc_1", apiKey: "user_test" });
+    expect(models[0]).toMatchObject({
+      id: "anthropic/claude-sonnet-5",
+      contextWindow: 1_000_000,
+      reasoning: true,
+    });
+    expect(models[0]?.vision).toBeUndefined();
+  });
+
+  it("maps OpenCode-style limit.context when context_length is absent", async () => {
+    const transport = new HttpAlphaTransport({
+      apiBase: "https://api.commandcode.ai",
+      cliVersion: "0.52.1",
+      timeoutMs: 5_000,
+      idleTimeoutMs: 1_000,
+      fetchImpl: async (url) => {
+        if (String(url).endsWith("/provider/v1/models")) {
+          return jsonResponse({
+            data: [
+              {
+                id: "openai/gpt-5.4",
+                name: "GPT-5.4",
+                limit: { context: 1_100_000, output: 128_000 },
+                capabilities: { reasoning: false },
+              },
+            ],
+          });
+        }
+        return jsonResponse({});
+      },
+    });
+    const models = await transport.listModels({ accountId: "acc_1", apiKey: "user_test" });
+    expect(models[0]).toMatchObject({
+      id: "openai/gpt-5.4",
+      contextWindow: 1_100_000,
+      outputLimit: 128_000,
+      reasoning: false,
+    });
+  });
+});
+
 describe("HttpAlphaTransport.getAccountStatus", () => {
   it("maps billing credits and Go plan identity into displayable windows", async () => {
     const transport = new HttpAlphaTransport({

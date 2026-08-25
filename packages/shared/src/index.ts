@@ -37,14 +37,21 @@ export {
 export type { ClientId, ClientAdapter, ClientStatus, ClientWriteResult, ConnectOptions, DetectEnv, ClaudeModelDefaults } from "./clients/index.js";
 export {
   OPENCODE_FALLBACK_MODELS,
+  OPENCODE_VISION_PREFERRED_MODELS,
+  OPENCODE_VISION_LOCK_REASON,
   isModelEnabled,
+  isRequiredVisionModel,
   setModelEnabled,
   displayNameForModel,
   catalogModels,
+  enabledSyncModels,
   exposedInferenceModels,
+  traitsForModel,
+  modelInventory,
+  catalogMeta,
 } from "./models.js";
-export type { CatalogEntry, ModelPolicyConfig } from "./models.js";
-export { writeOpenCodeConfig, fetchPoolModels, openCodeConfigPath } from "./opencode.js";
+export type { CatalogEntry, ModelPolicyConfig, ModelTraits } from "./models.js";
+export { writeOpenCodeConfig, fetchPoolModels, openCodeConfigPath, pickOpenCodeVisionModel, OPENCODE_PROVIDER_ID, OPENCODE_EYESIGHT_PLUGIN } from "./opencode.js";
 export type { OpenCodeModelInput, WriteOpenCodeOptions } from "./opencode.js";
 export { ERROR_POLICIES, policyFor, failure, classifyUpstreamError, parseResetTime } from "./errors.js";
 export { newId, sha256, fingerprintSession, identifySession } from "./session.js";

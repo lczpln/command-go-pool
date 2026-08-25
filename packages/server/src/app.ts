@@ -17,9 +17,14 @@ import {
   connectClient,
   defaultOpenCodeFile,
   disconnectClient,
+  catalogMeta,
+  enabledSyncModels,
   exposedInferenceModels,
+  modelInventory,
   getClientAdapter,
   isClientId,
+  isRequiredVisionModel,
+  OPENCODE_VISION_LOCK_REASON,
   isLoopbackHost,
   isModelEnabled,
   listClientStatuses,
@@ -128,23 +133,32 @@ export async function buildApp(runtime: Runtime) {
 
   app.get("/v1/models", async () => {
     const ids = new Set<string>();
+    const meta = catalogMeta(runtime.pool.eligible());
     for (const account of runtime.pool.eligible()) {
       for (const id of account.models ?? []) ids.add(id);
     }
-    if (ids.size === 0) {
+    if (ids.size === 0 || meta.size === 0) {
       for (const account of runtime.pool.list()) {
         const cred = runtime.pool.credential(account.id);
         if (!cred) continue;
         try {
           const models = await runtime.transport.listModels(cred);
-          runtime.pool.update(account.id, { models: models.map((m) => m.id) });
-          for (const model of models) ids.add(model.id);
+          runtime.pool.update(account.id, modelInventory(models));
+          for (const model of models) {
+            ids.add(model.id);
+            meta.set(model.id, {
+              reasoning: model.reasoning,
+              vision: model.vision,
+              contextWindow: model.contextWindow,
+              outputLimit: model.outputLimit,
+            });
+          }
         } catch {
           /* skip */
         }
       }
     }
-    return { object: "list", data: exposedInferenceModels(ids, runtime.config) };
+    return { object: "list", data: exposedInferenceModels(ids, runtime.config, meta) };
   });
 
   app.get("/v1/usage", async (req, reply) => {
@@ -316,7 +330,7 @@ export async function buildApp(runtime: Runtime) {
       const status = await runtime.transport.getAccountStatus(cred);
       if (!status.authenticated) return rejectAuth("Authentication failed");
       runtime.pool.update(account.id, {
-        models: status.models.map((m) => m.id),
+        ...modelInventory(status.models),
         status: "available",
         quota: mergeQuota(account.quota, status.quota),
       });
@@ -332,7 +346,7 @@ export async function buildApp(runtime: Runtime) {
     } catch {
       const test = await runtime.transport.testCredential(cred);
       if (!test.ok) return rejectAuth(test.message);
-      runtime.pool.update(account.id, { models: test.models?.map((m) => m.id), status: "available" });
+      runtime.pool.update(account.id, { ...modelInventory(test.models ?? []), status: "available" });
       emit(runtime, { level: "info", category: "system", type: "account.updated", payload: { accountId: account.id } });
       return { account: publicAccount(runtime, account.id), test };
     }
@@ -362,12 +376,12 @@ export async function buildApp(runtime: Runtime) {
         try {
           const status = await runtime.transport.getAccountStatus(cred);
           patch.status = status.authenticated ? "available" : "auth_error";
-          if (status.authenticated) patch.models = status.models.map((m) => m.id);
+          if (status.authenticated) Object.assign(patch, modelInventory(status.models));
           patch.quota = mergeQuota(runtime.pool.get(id)?.quota ?? {}, status.quota);
         } catch {
           const test = await runtime.transport.testCredential(cred);
           patch.status = test.ok ? "available" : "auth_error";
-          if (test.ok) patch.models = test.models?.map((m) => m.id);
+          if (test.ok) Object.assign(patch, modelInventory(test.models ?? []));
         }
       }
     }
@@ -392,7 +406,7 @@ export async function buildApp(runtime: Runtime) {
     try {
       const status = await runtime.transport.getAccountStatus(cred);
       runtime.pool.update(id, {
-        models: status.models.map((m) => m.id),
+        ...modelInventory(status.models),
         quota: mergeQuota(current.quota, status.quota),
         status: status.authenticated ? (current.status === "auth_error" ? "available" : current.status) : "auth_error",
       });
@@ -485,6 +499,9 @@ export async function buildApp(runtime: Runtime) {
     const id = typeof body.id === "string" ? body.id.trim() : "";
     if (!id) return reply.code(400).send({ error: "id required" });
     if (typeof body.enabled !== "boolean") return reply.code(400).send({ error: "enabled boolean required" });
+    if (isRequiredVisionModel(id) && body.enabled === false) {
+      return reply.code(400).send({ error: OPENCODE_VISION_LOCK_REASON });
+    }
     runtime.config.models = runtime.config.models ?? { disabled: [] };
     runtime.config.models.disabled = setModelEnabled(runtime.config.models.disabled ?? [], id, body.enabled);
     saveConfig(runtime.config);
@@ -493,9 +510,7 @@ export async function buildApp(runtime: Runtime) {
   });
 
   function enabledClientModels() {
-    const enabled = catalogModels(runtime.pool.list(), runtime.config)
-      .filter((model) => model.enabled)
-      .map((model) => ({ id: model.id, aliasOf: model.aliasOf }));
+    const enabled = enabledSyncModels(runtime.pool.list(), runtime.config);
     const fallback = enabled.length === 0;
     return { models: fallback ? OPENCODE_FALLBACK_MODELS : enabled, fallback };
   }

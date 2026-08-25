@@ -1,6 +1,6 @@
 import { input, confirm, password } from "@inquirer/prompts";
 import type { AccountPool } from "@command-go-pool/account-pool";
-import type { CommandCodeTransport } from "@command-go-pool/shared";
+import { modelInventory, type CommandCodeTransport } from "@command-go-pool/shared";
 import { loadConfig, saveConfig } from "@command-go-pool/storage";
 
 export async function onboard(pool: AccountPool, transport: CommandCodeTransport): Promise<boolean> {
@@ -29,7 +29,7 @@ export async function onboard(pool: AccountPool, transport: CommandCodeTransport
         pool.remove(account.id);
         console.log("✗ Authentication failed — account not added");
       } else {
-        pool.update(account.id, { status: "available", models: status.models.map((m) => m.id), quota: status.quota });
+        pool.update(account.id, { status: "available", ...modelInventory(status.models), quota: status.quota });
         console.log("✓ Authentication successful");
         if (status.models.length) console.log("✓ Models discovered");
         console.log("✓ Account ready\n");
@@ -40,7 +40,7 @@ export async function onboard(pool: AccountPool, transport: CommandCodeTransport
         pool.remove(account.id);
         console.log(`✗ ${result.message} — account not added`);
       } else {
-        pool.update(account.id, { status: "available", models: result.models?.map((m) => m.id) });
+        pool.update(account.id, { status: "available", ...modelInventory(result.models ?? []) });
         console.log("✓ Authentication successful");
         if (result.models?.length) console.log("✓ Models discovered");
         console.log("✓ Account ready\n");

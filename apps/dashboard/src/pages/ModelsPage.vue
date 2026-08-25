@@ -27,6 +27,7 @@ function accounts(model: CatalogModel) {
 }
 
 async function toggle(model: CatalogModel) {
+  if (model.locked) return;
   busy.value = model.id;
   try {
     await patchModel(model.id, { enabled: !model.enabled });

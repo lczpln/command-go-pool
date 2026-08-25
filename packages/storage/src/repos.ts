@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import type { Account, AccountQuota, AccountStatus, PoolEvent, QuotaWindow, QuotaWindowName, Session } from "@command-go-pool/shared";
+import type { Account, AccountQuota, AccountStatus, ModelInfo, PoolEvent, QuotaWindow, QuotaWindowName, Session } from "@command-go-pool/shared";
 
 function dt(n?: number | null): Date | undefined {
   return n ? new Date(n) : undefined;
@@ -49,7 +49,7 @@ export class AccountRepo {
         cooldown_reason: account.cooldownReason ?? null,
         health_score: account.healthScore,
         monthly_subscription_cost: account.monthlySubscriptionCost ?? null,
-        models_json: account.models ? JSON.stringify(account.models) : null,
+        models_json: serializeModels(account),
         created_at: Date.now(),
         updated_at: Date.now(),
       });
@@ -129,7 +129,7 @@ export class AccountRepo {
       healthScore: Number(row.health_score ?? 1),
       activeSessionCount: 0,
       monthlySubscriptionCost: num(row.monthly_subscription_cost),
-      models: row.models_json ? (JSON.parse(String(row.models_json)) as string[]) : undefined,
+      ...parseModelsJson(row.models_json),
       quota: this.latestQuota(id),
     };
   }
@@ -361,6 +361,28 @@ export class EventRepo {
       type: String(row.type),
       payload: JSON.parse(String(row.payload_json)) as Record<string, unknown>,
     }));
+  }
+}
+
+function serializeModels(account: Account): string | null {
+  if (account.modelCatalog?.length) return JSON.stringify(account.modelCatalog);
+  if (account.models?.length) return JSON.stringify(account.models);
+  return null;
+}
+
+function parseModelsJson(raw: unknown): Pick<Account, "models" | "modelCatalog"> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(String(raw)) as unknown;
+    if (!Array.isArray(parsed) || parsed.length === 0) return {};
+    if (parsed.every((item) => typeof item === "string")) {
+      return { models: parsed as string[] };
+    }
+    const catalog = parsed.filter((item): item is ModelInfo => Boolean(item && typeof item === "object" && typeof (item as ModelInfo).id === "string"));
+    if (catalog.length === 0) return {};
+    return { models: catalog.map((model) => model.id), modelCatalog: catalog };
+  } catch {
+    return {};
   }
 }
 

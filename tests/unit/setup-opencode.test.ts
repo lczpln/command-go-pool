@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseAppConfig } from "@command-go-pool/shared";
+import { parseAppConfig, writeOpenCodeConfig } from "@command-go-pool/shared";
 import { setupOpenCode, setupOpenCodeFromConfig } from "../../packages/cli/src/setup.js";
 
 describe("OpenCode setup", () => {
@@ -24,12 +24,22 @@ describe("OpenCode setup", () => {
       });
     const message = await setupOpenCode("http://127.0.0.1:8787/v1", file, { fetchImpl, apiKey: "cgp_test" });
     const written = JSON.parse(readFileSync(file, "utf8")) as {
-      provider: Record<string, { options?: { baseURL?: string; apiKey?: string }; models?: Record<string, { name: string }> }>;
+      provider: Record<
+        string,
+        {
+          options?: { baseURL?: string; apiKey?: string };
+          models?: Record<string, { name: string; reasoning?: boolean; interleaved?: { field: string } }>;
+        }
+      >;
     };
     expect(written.provider.anthropic).toBeTruthy();
     expect(written.provider["command-go-pool"]?.options?.baseURL).toBe("http://127.0.0.1:8787/v1");
     expect(written.provider["command-go-pool"]?.options?.apiKey).toBe("cgp_test");
     expect(written.provider["command-go-pool"]?.models?.["deepseek/deepseek-v4-flash"]?.name).toBe("DeepSeek V4 Flash");
+    expect(written.provider["command-go-pool"]?.models?.["deepseek/deepseek-v4-flash"]?.reasoning).toBe(true);
+    expect(written.provider["command-go-pool"]?.models?.["deepseek/deepseek-v4-flash"]?.interleaved).toEqual({
+      field: "reasoning_content",
+    });
     expect(message).toContain("Unrelated providers were left untouched");
     expect(message).toContain("Added provider: command-go-pool");
     expect(readdirSync(dir).some((name) => name.startsWith("opencode.json.bak."))).toBe(true);
@@ -45,7 +55,10 @@ describe("OpenCode setup", () => {
     const written = JSON.parse(readFileSync(file, "utf8")) as {
       provider: { "command-go-pool": { models: Record<string, unknown> } };
     };
-    expect(written.provider["command-go-pool"].models["deepseek/deepseek-v4-pro"]).toBeTruthy();
+    expect(written.provider["command-go-pool"].models["deepseek/deepseek-v4-pro"]).toMatchObject({
+      reasoning: true,
+      interleaved: { field: "reasoning_content" },
+    });
     expect(message).toContain("using fallback models");
   });
 
@@ -72,5 +85,120 @@ describe("OpenCode setup", () => {
     expect(written.provider["command-go-pool"].options?.apiKey).toBe("pool-secret");
     expect(written.provider["command-go-pool"].options?.baseURL).toBe("http://127.0.0.1:8787/v1");
     expect(message).not.toContain("HTTP 401");
+  });
+
+  it("writes reasoning onto known Go models even when the caller only supplies ids", () => {
+    const dir = mkdtempSync(join(tmpdir(), "cgp-oc-reason-"));
+    const file = join(dir, "opencode.json");
+    writeOpenCodeConfig({
+      baseUrl: "http://127.0.0.1:8787/v1",
+      file,
+      models: [{ id: "deepseek/deepseek-v4-pro" }],
+    });
+    const written = JSON.parse(readFileSync(file, "utf8")) as {
+      provider: { "command-go-pool": { models: Record<string, { reasoning?: boolean; interleaved?: { field: string } }> } };
+    };
+    expect(written.provider["command-go-pool"].models["deepseek/deepseek-v4-pro"]).toMatchObject({
+      name: "DeepSeek V4 Pro",
+      reasoning: true,
+      interleaved: { field: "reasoning_content" },
+      limit: { context: 1_000_000, output: 32_768 },
+    });
+    expect(written.provider["command-go-pool"].models.flash).toBeUndefined();
+  });
+
+  it("writes reasoning onto unknown models and context limits when supplied", () => {
+    const dir = mkdtempSync(join(tmpdir(), "cgp-oc-reason-unknown-"));
+    const file = join(dir, "opencode.json");
+    writeOpenCodeConfig({
+      baseUrl: "http://127.0.0.1:8787/v1",
+      file,
+      models: [{ id: "anthropic/claude-sonnet-5", contextWindow: 1_000_000, outputLimit: 64_000 }],
+    });
+    const written = JSON.parse(readFileSync(file, "utf8")) as {
+      provider: {
+        "command-go-pool": {
+          models: Record<string, { reasoning?: boolean; interleaved?: { field: string }; limit?: { context: number; output: number } }>;
+        };
+      };
+    };
+    expect(written.provider["command-go-pool"].models["anthropic/claude-sonnet-5"]).toMatchObject({
+      reasoning: true,
+      interleaved: { field: "reasoning_content" },
+      limit: { context: 1_000_000, output: 64_000 },
+    });
+    expect(written.provider["command-go-pool"].models["anthropic/claude-sonnet-5"].attachment).toBeUndefined();
+  });
+
+  it("writes every pool model as text-only and leaves vision to opencode-eyesight", () => {
+    const dir = mkdtempSync(join(tmpdir(), "cgp-oc-vision-"));
+    const file = join(dir, "opencode.json");
+    writeOpenCodeConfig({
+      baseUrl: "http://127.0.0.1:8787/v1",
+      file,
+      models: [{ id: "deepseek/deepseek-v4-flash" }, { id: "deepseek/deepseek-v4-flash-vision-exp" }],
+    });
+    const written = JSON.parse(readFileSync(file, "utf8")) as {
+      provider: {
+        "command-go-pool": {
+          models: Record<string, { attachment?: boolean; modalities?: { input: string[] } }>;
+        };
+      };
+    };
+    expect(written.provider["command-go-pool"].models["deepseek/deepseek-v4-flash"].attachment).toBeUndefined();
+    expect(written.provider["command-go-pool"].models["deepseek/deepseek-v4-flash"].modalities).toBeUndefined();
+    expect(written.provider["command-go-pool"].models["deepseek/deepseek-v4-flash-vision-exp"].attachment).toBeUndefined();
+    expect(written.provider["command-go-pool"].models["deepseek/deepseek-v4-flash-vision-exp"].modalities).toBeUndefined();
+  });
+
+  it("installs opencode-eyesight and the vision agent on connect, preferring MiMo", () => {
+    const dir = mkdtempSync(join(tmpdir(), "cgp-oc-eyesight-"));
+    const file = join(dir, "opencode.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        plugin: ["@warp-dot-dev/opencode-warp", ["opencode-eyesight", { model: "opencode-go/mimo-v2.5" }]],
+        agent: { build: { description: "keep me" } },
+      }),
+    );
+    writeOpenCodeConfig({
+      baseUrl: "http://127.0.0.1:8787/v1",
+      file,
+      models: [
+        { id: "deepseek/deepseek-v4-flash" },
+        { id: "xiaomi/mimo-v2.5" },
+        { id: "google/gemini-3.5-flash-lite" },
+      ],
+    });
+    const written = JSON.parse(readFileSync(file, "utf8")) as {
+      plugin: unknown[];
+      agent: {
+        build?: unknown;
+        vision?: { model?: string; tools?: Record<string, unknown>; permission?: Record<string, unknown> };
+      };
+    };
+    expect(written.plugin[0]).toBe("@warp-dot-dev/opencode-warp");
+    expect(written.plugin[1]).toEqual(["opencode-eyesight", { model: "command-go-pool/xiaomi/mimo-v2.5" }]);
+    expect(written.agent.build).toEqual({ description: "keep me" });
+    expect(written.agent.vision).toMatchObject({
+      model: "command-go-pool/xiaomi/mimo-v2.5",
+      tools: { "*": false, read: true },
+      permission: { "*": "deny", read: "allow" },
+      options: {},
+    });
+  });
+
+  it("falls back to the first pool model when MiMo is not in the catalog", () => {
+    const dir = mkdtempSync(join(tmpdir(), "cgp-oc-eyesight-fallback-"));
+    const file = join(dir, "opencode.json");
+    writeOpenCodeConfig({
+      baseUrl: "http://127.0.0.1:8787/v1",
+      file,
+      models: [{ id: "deepseek/deepseek-v4-flash" }, { id: "deepseek/deepseek-v4-flash-vision-exp" }],
+    });
+    const written = JSON.parse(readFileSync(file, "utf8")) as { plugin: unknown[] };
+    expect(written.plugin).toEqual([
+      ["opencode-eyesight", { model: "command-go-pool/deepseek/deepseek-v4-flash" }],
+    ]);
   });
 });

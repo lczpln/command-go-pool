@@ -9,6 +9,7 @@ import {
   listClientStatuses,
   rotatePoolApiKey,
   isClientId,
+  modelInventory,
   type ClientId,
 } from "@command-go-pool/shared";
 import { AccountRepo, SessionRepo, SecretStore, existsConfig, loadConfig, openDatabase, saveConfig } from "@command-go-pool/storage";
@@ -161,7 +162,7 @@ function program() {
     try {
       const status = await transport.getAccountStatus(cred);
       if (status.authenticated) {
-        pool.update(accountRow.id, { status: "available", models: status.models.map((m) => m.id), quota: status.quota });
+        pool.update(accountRow.id, { status: "available", ...modelInventory(status.models), quota: status.quota });
         console.log("✓ Authentication successful");
         console.log("✓ Models discovered");
         console.log("✓ Account ready");
@@ -172,7 +173,7 @@ function program() {
     } catch {
       const result = await transport.testCredential(cred);
       if (result.ok) {
-        pool.update(accountRow.id, { status: "available", models: result.models?.map((m) => m.id) });
+        pool.update(accountRow.id, { status: "available", ...modelInventory(result.models ?? []) });
         console.log("✓ Authentication successful");
         console.log("✓ Models discovered");
         console.log("✓ Account ready");

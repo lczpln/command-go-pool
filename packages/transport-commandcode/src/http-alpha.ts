@@ -483,14 +483,41 @@ function parseDate(value: unknown): Date | undefined {
 
 function mapModel(row: Record<string, unknown>): ModelInfo {
   const id = String(row.id ?? row.name ?? "unknown");
+  const capabilities = asObject(row.capabilities);
+  const limit = asObject(row.limit) ?? asObject(row.limits);
+  const contextWindow =
+    positive(row.context_length) ??
+    positive(row.context_window) ??
+    positive(row.contextWindow) ??
+    positive(limit?.context);
+  const outputLimit =
+    positive(row.max_output_tokens) ??
+    positive(limit?.output) ??
+    positive(limit?.max_output_tokens) ??
+    positive(limit?.max_tokens);
   return {
     id,
     name: String(row.name ?? id),
     ownedBy: typeof row.owned_by === "string" ? row.owned_by : id.split("/")[0],
-    contextWindow: num(row.context_window) ?? num((row.limits as Record<string, unknown> | undefined)?.max_tokens),
-    vision: Boolean(row.vision ?? (row.capabilities as Record<string, unknown> | undefined)?.vision),
-    reasoning: Boolean(row.reasoning),
+    contextWindow,
+    outputLimit,
+    vision: optionalFlag(row.vision ?? capabilities?.vision),
+    reasoning: optionalFlag(row.reasoning ?? capabilities?.reasoning) ?? true,
   };
+}
+
+function asObject(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+}
+
+function positive(value: unknown): number | undefined {
+  const parsed = num(value);
+  return parsed !== undefined && parsed > 0 ? parsed : undefined;
+}
+
+function optionalFlag(value: unknown): boolean | undefined {
+  if (value === undefined || value === null) return undefined;
+  return Boolean(value);
 }
 
 function plainText(message: NormalizedMessage): string {

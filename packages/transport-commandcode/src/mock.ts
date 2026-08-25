@@ -11,9 +11,9 @@ export interface MockScenario {
 }
 
 const DEFAULT_MODELS: ModelInfo[] = [
-  { id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash" },
-  { id: "deepseek/deepseek-v4-flash-vision-exp", name: "DeepSeek V4 Flash Vision Exp", vision: true },
-  { id: "deepseek/deepseek-v4-pro", name: "DeepSeek V4 Pro", reasoning: true },
+  { id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash", reasoning: true, contextWindow: 1_000_000 },
+  { id: "deepseek/deepseek-v4-flash-vision-exp", name: "DeepSeek V4 Flash Vision Exp", vision: true, reasoning: true, contextWindow: 1_000_000 },
+  { id: "deepseek/deepseek-v4-pro", name: "DeepSeek V4 Pro", reasoning: true, contextWindow: 1_000_000 },
 ];
 
 const UNKNOWN_QUOTA: AccountStatusSnapshot["quota"] = {

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { clientApiKey } from "../pool-key.js";
-import { fetchPoolModels, writeOpenCodeConfig, type OpenCodeModelInput } from "../opencode.js";
+import { fetchPoolModels, writeOpenCodeConfig, OPENCODE_PROVIDER_ID, type OpenCodeModelInput } from "../opencode.js";
 import { OPENCODE_FALLBACK_MODELS } from "../models.js";
 import type { AppConfig } from "../config.js";
 import { backupFile, binaryOnPath, connectedFile, poolOpenAiUrl, resolveHome } from "./paths.js";
@@ -54,7 +54,7 @@ export const opencodeAdapter: ClientAdapter = {
     backupFile(file);
     const current = readJson(file);
     const provider = asRecord(current.provider);
-    delete provider["command-go-pool"];
+    delete provider[OPENCODE_PROVIDER_ID];
     current.provider = provider;
     writeFileSync(file, `${JSON.stringify(current, null, 2)}\n`);
     return {
@@ -80,11 +80,11 @@ export const opencodeAdapter: ClientAdapter = {
     backupFile(file);
     const current = readJson(file);
     const provider = asRecord(current.provider);
-    const ours = asRecord(provider["command-go-pool"]);
+    const ours = asRecord(provider[OPENCODE_PROVIDER_ID]);
     const options = asRecord(ours.options);
     options.apiKey = apiKey;
     ours.options = options;
-    provider["command-go-pool"] = ours;
+    provider[OPENCODE_PROVIDER_ID] = ours;
     current.provider = provider;
     writeFileSync(file, `${JSON.stringify(current, null, 2)}\n`);
     return { id: "opencode", ok: true, file, message: `Updated pool API key in ${file}` };

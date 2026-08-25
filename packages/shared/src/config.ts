@@ -37,11 +37,7 @@ export const appConfigSchema = z.object({
       idleTimeoutMs: z.number().int().nonnegative().default(120_000),
     })
     .default({}),
-  aliases: z.record(z.string()).default({
-    flash: "deepseek/deepseek-v4-flash",
-    vision: "deepseek/deepseek-v4-flash-vision-exp",
-    pro: "deepseek/deepseek-v4-pro",
-  }),
+  aliases: z.record(z.string()).default({}),
   models: z
     .object({
       disabled: z.array(z.string()).default([]),
@@ -71,8 +67,12 @@ export const appConfigSchema = z.object({
 
 export type AppConfig = z.infer<typeof appConfigSchema>;
 
+const STOCK_ALIASES = new Set(["flash", "vision", "pro"]);
+
 export function parseAppConfig(raw: unknown): AppConfig {
-  return appConfigSchema.parse(raw ?? {});
+  const parsed = appConfigSchema.parse(raw ?? {});
+  for (const key of STOCK_ALIASES) delete parsed.aliases[key];
+  return parsed;
 }
 
 export function applyEnvOverrides(config: AppConfig, env: NodeJS.ProcessEnv = process.env): AppConfig {
