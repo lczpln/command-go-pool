@@ -33,7 +33,7 @@ describe("OpenCode setup", () => {
     expect(readdirSync(dir).some((name) => name.startsWith("opencode.json.bak."))).toBe(true);
   });
 
-  it("falls back to the default Go models when the proxy is unreachable", async () => {
+  it("falls back to the default Go models when the pool is unreachable", async () => {
     const dir = mkdtempSync(join(tmpdir(), "cgp-oc-down-"));
     const file = join(dir, "opencode.json");
     const fetchImpl = async () => {

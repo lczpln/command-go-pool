@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { parseNdjsonLine, parseCreditsPayload, buildEnvelope } from "@command-go-proxy/transport-commandcode";
-import { openaiToNormalized, openaiChatSchema } from "@command-go-proxy/protocol-openai";
-import { anthropicToNormalized, anthropicMessageSchema } from "@command-go-proxy/protocol-anthropic";
+import { parseNdjsonLine, parseCreditsPayload, buildEnvelope } from "@command-go-pool/transport-commandcode";
+import { openaiToNormalized, openaiChatSchema } from "@command-go-pool/protocol-openai";
+import { anthropicToNormalized, anthropicMessageSchema } from "@command-go-pool/protocol-anthropic";
 
 describe("transport ndjson", () => {
   it("maps text and tool events", () => {

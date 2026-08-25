@@ -1,5 +1,5 @@
 {
-  "name": "@command-go-proxy/protocol-openai",
+  "name": "@command-go-pool/protocol-openai",
   "version": "0.1.0",
   "private": true,
   "type": "module",

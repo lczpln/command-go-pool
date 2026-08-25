@@ -6,7 +6,7 @@ import { withServer } from "../helpers.js";
 
 describe("model catalog APIs", () => {
   afterEach(() => {
-    delete process.env.COMMAND_GO_PROXY_HOME;
+    delete process.env.COMMAND_GO_POOL_HOME;
   });
 
   it("lists pool models, omits disabled ones from /v1/models, and rejects chat", async () => {

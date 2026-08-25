@@ -1,18 +1,18 @@
-import { parseAppConfig } from "@command-go-proxy/shared";
-import { MockTransport } from "@command-go-proxy/transport-commandcode";
-import { boot } from "@command-go-proxy/server";
-import type { AccountQuota } from "@command-go-proxy/shared";
+import { parseAppConfig } from "@command-go-pool/shared";
+import { MockTransport } from "@command-go-pool/transport-commandcode";
+import { boot } from "@command-go-pool/server";
+import type { AccountQuota } from "@command-go-pool/shared";
 
-const home = process.env.COMMAND_GO_PROXY_HOME ?? "/tmp/command-go-proxy-demo";
-process.env.COMMAND_GO_PROXY_MASTER_KEY ??= "demo-master-key-not-for-production!!";
-process.env.COMMAND_GO_PROXY_HOME = home;
+const home = process.env.COMMAND_GO_POOL_HOME ?? "/tmp/command-go-pool-demo";
+process.env.COMMAND_GO_POOL_MASTER_KEY ??= "demo-master-key-not-for-production!!";
+process.env.COMMAND_GO_POOL_HOME = home;
 
 const transport = new MockTransport();
 const instance = await boot({
   home,
   transport,
   config: parseAppConfig({
-    server: { host: "127.0.0.1", port: Number(process.env.COMMAND_GO_PROXY_PORT ?? 8787) },
+    server: { host: "127.0.0.1", port: Number(process.env.COMMAND_GO_POOL_PORT ?? 8787) },
   }),
 });
 
@@ -123,4 +123,4 @@ if (ids[0] && !instance.runtime.sessions.get("ses_demo")) {
 }
 
 await instance.listen();
-console.log(`Demo mock proxy http://127.0.0.1:${instance.runtime.config.server.port}`);
+console.log(`Demo mock pool http://127.0.0.1:${instance.runtime.config.server.port}`);

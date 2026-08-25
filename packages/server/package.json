@@ -1,5 +1,5 @@
 {
-  "name": "@command-go-proxy/server",
+  "name": "@command-go-pool/server",
   "version": "0.1.0",
   "private": true,
   "type": "module",

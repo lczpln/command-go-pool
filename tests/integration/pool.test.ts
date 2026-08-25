@@ -2,15 +2,15 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { parseAppConfig } from "@command-go-proxy/shared";
-import { failure } from "@command-go-proxy/shared";
-import { MockTransport } from "@command-go-proxy/transport-commandcode";
-import { boot } from "@command-go-proxy/server";
+import { parseAppConfig } from "@command-go-pool/shared";
+import { failure } from "@command-go-pool/shared";
+import { MockTransport } from "@command-go-pool/transport-commandcode";
+import { boot } from "@command-go-pool/server";
 
 async function withServer(setup: (transport: MockTransport, add: (label: string) => string) => void) {
   const home = mkdtempSync(join(tmpdir(), "cgp-int-"));
-  process.env.COMMAND_GO_PROXY_HOME = home;
-  process.env.COMMAND_GO_PROXY_MASTER_KEY = "z".repeat(32);
+  process.env.COMMAND_GO_POOL_HOME = home;
+  process.env.COMMAND_GO_POOL_MASTER_KEY = "z".repeat(32);
   const transport = new MockTransport();
   const config = parseAppConfig({ server: { host: "127.0.0.1", port: 0 } });
   const instance = await boot({ config, transport, home });
@@ -22,7 +22,7 @@ async function withServer(setup: (transport: MockTransport, add: (label: string)
 
 describe("openai integration", () => {
   afterEach(() => {
-    delete process.env.COMMAND_GO_PROXY_HOME;
+    delete process.env.COMMAND_GO_POOL_HOME;
   });
 
   it("streams chat completions through mock transport", async () => {

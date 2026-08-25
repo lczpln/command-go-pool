@@ -1,8 +1,8 @@
-import type { Account, NormalizedRequest, RoutingMode, Session } from "@command-go-proxy/shared";
-import { identifySession } from "@command-go-proxy/shared";
-import { scoreAccount } from "@command-go-proxy/quota-engine";
-import type { AccountPool } from "@command-go-proxy/account-pool";
-import type { SessionRepo } from "@command-go-proxy/storage";
+import type { Account, NormalizedRequest, RoutingMode, Session } from "@command-go-pool/shared";
+import { identifySession } from "@command-go-pool/shared";
+import { scoreAccount } from "@command-go-pool/quota-engine";
+import type { AccountPool } from "@command-go-pool/account-pool";
+import type { SessionRepo } from "@command-go-pool/storage";
 
 export interface RouteDecision {
   session: Session;

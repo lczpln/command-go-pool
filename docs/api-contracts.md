@@ -2,7 +2,7 @@
 
 ## Inference (`/v1`)
 
-Auth: if `server.apiKey` or `COMMAND_GO_PROXY_API_KEY` is set, require `Authorization: Bearer` or `x-api-key`. Required when bind host is not loopback.
+Auth: if `server.apiKey` or `COMMAND_GO_POOL_API_KEY` is set, require `Authorization: Bearer` or `x-api-key`. Required when bind host is not loopback.
 
 | Method | Path | Notes |
 | --- | --- | --- |
@@ -38,4 +38,4 @@ Same auth rules. Never includes credential material.
 | GET | `/api/events/stream` (SSE) |
 | GET/PATCH | `/api/config` |
 
-SSE event names: `account.updated`, `account.cooldown`, `account.recovered`, `session.started`, `session.migrated`, `session.ended`, `usage.updated`, `models.updated`, `proxy.error`.
+SSE event names: `account.updated`, `account.cooldown`, `account.recovered`, `session.started`, `session.migrated`, `session.ended`, `usage.updated`, `models.updated`, `pool.error`.

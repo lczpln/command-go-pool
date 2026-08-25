@@ -14,8 +14,8 @@ WORKDIR /app
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
-ENV COMMAND_GO_PROXY_HOME=/data
-ENV COMMAND_GO_PROXY_HOST=0.0.0.0
+ENV COMMAND_GO_POOL_HOME=/data
+ENV COMMAND_GO_POOL_HOST=0.0.0.0
 RUN mkdir -p /data && chown node:node /data
 VOLUME ["/data"]
 EXPOSE 8787

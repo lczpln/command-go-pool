@@ -1,5 +1,5 @@
 {
-  "name": "@command-go-proxy/observability",
+  "name": "@command-go-pool/observability",
   "version": "0.1.0",
   "private": true,
   "type": "module",

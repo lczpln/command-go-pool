@@ -1,6 +1,6 @@
 # SQLite schema
 
-Default directory: `~/.command-go-proxy/` (`COMMAND_GO_PROXY_HOME` override). Files: `state.db`, `config.yaml`, `secrets.bin`, `master.key`, `logs/`.
+Default directory: `~/.command-go-pool/` (`COMMAND_GO_POOL_HOME` override). Files: `state.db`, `config.yaml`, `secrets.bin`, `master.key`, `logs/`.
 
 Mode `0700` on the directory, `0600` on db/config/secrets.
 
@@ -74,7 +74,7 @@ History of binds/migrations: `id`, `session_id`, `account_id`, `reason`, `at`.
 
 Per-request metrics only (no prompt text): account, model, session, tokens, latency_ms, ttft_ms, error, estimated_cost, at.
 
-### proxy_events
+### pool_events
 
 Dashboard stream: `id`, `level`, `category`, `type`, `payload_json`, `at`.
 

@@ -1,11 +1,11 @@
 import { input, confirm, password } from "@inquirer/prompts";
-import type { AccountPool } from "@command-go-proxy/account-pool";
-import type { CommandCodeTransport } from "@command-go-proxy/shared";
-import { parseAppConfig } from "@command-go-proxy/shared";
-import { saveConfig } from "@command-go-proxy/storage";
+import type { AccountPool } from "@command-go-pool/account-pool";
+import type { CommandCodeTransport } from "@command-go-pool/shared";
+import { parseAppConfig } from "@command-go-pool/shared";
+import { saveConfig } from "@command-go-pool/storage";
 
 export async function onboard(pool: AccountPool, transport: CommandCodeTransport): Promise<boolean> {
-  console.log("\nCommand Go Proxy\n");
+  console.log("\nCommand Go Pool\n");
   if (pool.list().length === 0) {
     console.log("No accounts configured.\n");
     console.log("Prefer the dashboard to paste Studio API keys. This CLI path is optional.\n");
@@ -53,5 +53,5 @@ export async function onboard(pool: AccountPool, transport: CommandCodeTransport
   const count = pool.list().length;
   if (count === 0) return false;
   console.log(`\n${count} account${count === 1 ? "" : "s"} configured.\n`);
-  return confirm({ message: "Start proxy?", default: true });
+  return confirm({ message: "Start the pool?", default: true });
 }

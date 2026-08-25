@@ -1,5 +1,5 @@
-import type { AccountCredential, AuthResult, CommandCodeTransport, ModelInfo, NormalizedChunk, NormalizedRequest, AccountStatusSnapshot } from "@command-go-proxy/shared";
-import { failure } from "@command-go-proxy/shared";
+import type { AccountCredential, AuthResult, CommandCodeTransport, ModelInfo, NormalizedChunk, NormalizedRequest, AccountStatusSnapshot } from "@command-go-pool/shared";
+import { failure } from "@command-go-pool/shared";
 
 export interface MockScenario {
   models?: ModelInfo[];

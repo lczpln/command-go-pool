@@ -12,7 +12,7 @@ export class SecretStore {
 
   static open(home?: string, env: NodeJS.ProcessEnv = process.env): SecretStore {
     const p = paths(home);
-    const fromEnv = env.COMMAND_GO_PROXY_MASTER_KEY;
+    const fromEnv = env.COMMAND_GO_POOL_MASTER_KEY;
     let raw: Buffer;
     if (fromEnv) {
       raw = Buffer.from(fromEnv, fromEnv.length === 64 ? "hex" : "utf8");

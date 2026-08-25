@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeQuota } from "@command-go-proxy/server";
+import { mergeQuota } from "@command-go-pool/server";
 
 describe("mergeQuota", () => {
   it("keeps previous exact windows when incoming data is unknown", () => {

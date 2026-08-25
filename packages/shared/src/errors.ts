@@ -1,14 +1,14 @@
-import type { ProxyErrorCode, ProxyFailure, QuotaWindowName } from "./types.js";
+import type { PoolErrorCode, PoolFailure, QuotaWindowName } from "./types.js";
 
 export interface ErrorPolicy {
-  code: ProxyErrorCode;
+  code: PoolErrorCode;
   retryable: boolean;
   failover: boolean;
   accountStatus?: "cooldown" | "auth_error" | "upstream_error" | "quota_exhausted" | "available";
   cooldown?: boolean;
 }
 
-export const ERROR_POLICIES: Record<ProxyErrorCode, ErrorPolicy> = {
+export const ERROR_POLICIES: Record<PoolErrorCode, ErrorPolicy> = {
   quota_exhausted: { code: "quota_exhausted", retryable: true, failover: true, accountStatus: "quota_exhausted", cooldown: true },
   rate_limited: { code: "rate_limited", retryable: true, failover: true, accountStatus: "cooldown", cooldown: true },
   auth_failed: { code: "auth_failed", retryable: true, failover: true, accountStatus: "auth_error" },
@@ -22,11 +22,11 @@ export const ERROR_POLICIES: Record<ProxyErrorCode, ErrorPolicy> = {
   unknown: { code: "unknown", retryable: false, failover: true, accountStatus: "upstream_error" },
 };
 
-export function policyFor(code: ProxyErrorCode): ErrorPolicy {
+export function policyFor(code: PoolErrorCode): ErrorPolicy {
   return ERROR_POLICIES[code];
 }
 
-export function failure(code: ProxyErrorCode, message: string, extra: Partial<ProxyFailure> = {}): ProxyFailure {
+export function failure(code: PoolErrorCode, message: string, extra: Partial<PoolFailure> = {}): PoolFailure {
   const policy = policyFor(code);
   return {
     code,
@@ -47,7 +47,7 @@ export function classifyUpstreamError(input: {
   bodyText?: string;
   name?: string;
   aborted?: boolean;
-}): ProxyFailure {
+}): PoolFailure {
   const text = (input.bodyText ?? "").toLowerCase();
   if (input.aborted || input.name === "AbortError") {
     return failure("client_cancelled", "Request cancelled");

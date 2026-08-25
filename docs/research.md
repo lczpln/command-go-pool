@@ -4,7 +4,7 @@ Inspected official Command Code docs and community implementations **for protoco
 
 ## Official product
 
-- CLI package: `command-code` (`cmd` / `command-code`). Requires Node 22+ for the official CLI; this proxy targets Node 20+ independently.
+- CLI package: `command-code` (`cmd` / `command-code`). Requires Node 22+ for the official CLI; this pool targets Node 20+ independently.
 - Auth: user-owned API keys from Studio (`user_…`). Stored by the CLI at `~/.commandcode/auth.json` (mode 0600). Env override: `COMMAND_CODE_API_KEY`.
 - Login: `cmd login` (browser OAuth or pasted key). We never scrape browser sessions.
 - Headless: `cmd -p` / `--print` is an **agent loop** (tools, sessions, exit codes). It is not a drop-in OpenAI generation transport. Useful for auth/status fallback (`cmd status`, exit codes 3/5/7/10), not for streaming client tool-calls.
@@ -97,7 +97,7 @@ Monthly remaining is **remaining**, not a total. Do not invert the meter. Go tot
 
 Observed upstream:
 
-| Signal | ProxyError |
+| Signal | PoolError |
 | --- | --- |
 | 401 / `UNAUTHORIZED` | `auth_failed` |
 | insufficient credits | `insufficient_credit` |

@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
-import { dataHome, paths } from "@command-go-proxy/storage";
-import type { AccountPool } from "@command-go-proxy/account-pool";
+import { dataHome, paths } from "@command-go-pool/storage";
+import type { AccountPool } from "@command-go-pool/account-pool";
 
 export async function doctor(pool: AccountPool): Promise<number> {
   const home = dataHome();

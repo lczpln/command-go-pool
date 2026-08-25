@@ -1,9 +1,9 @@
-import { createLogger, EventBus } from "@command-go-proxy/observability";
-import { AccountPool } from "@command-go-proxy/account-pool";
-import { SessionRouter } from "@command-go-proxy/session-router";
-import { HttpAlphaTransport, MockTransport } from "@command-go-proxy/transport-commandcode";
-import { AccountRepo, EventRepo, SessionRepo, UsageRepo, openDatabase, SecretStore, loadConfig } from "@command-go-proxy/storage";
-import type { AppConfig, CommandCodeTransport } from "@command-go-proxy/shared";
+import { createLogger, EventBus } from "@command-go-pool/observability";
+import { AccountPool } from "@command-go-pool/account-pool";
+import { SessionRouter } from "@command-go-pool/session-router";
+import { HttpAlphaTransport, MockTransport } from "@command-go-pool/transport-commandcode";
+import { AccountRepo, EventRepo, SessionRepo, UsageRepo, openDatabase, SecretStore, loadConfig } from "@command-go-pool/storage";
+import type { AppConfig, CommandCodeTransport } from "@command-go-pool/shared";
 import { buildApp } from "./app.js";
 import { startHealthMonitor } from "./health.js";
 import type { Runtime } from "./runtime.js";
@@ -30,7 +30,7 @@ export async function boot(options: BootOptions = {}) {
   });
   const transport =
     options.transport ??
-    (process.env.COMMAND_GO_PROXY_MOCK === "1"
+    (process.env.COMMAND_GO_POOL_MOCK === "1"
       ? new MockTransport()
       : new HttpAlphaTransport({
           apiBase: config.transport.apiBase,

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import { applyEnvOverrides, parseAppConfig, type AppConfig } from "@command-go-proxy/shared";
+import { applyEnvOverrides, parseAppConfig, type AppConfig } from "@command-go-pool/shared";
 import { ensureHome, paths } from "./paths.js";
 
 export function loadConfig(home?: string): AppConfig {

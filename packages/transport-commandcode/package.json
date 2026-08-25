@@ -1,5 +1,5 @@
 {
-  "name": "@command-go-proxy/transport-commandcode",
+  "name": "@command-go-pool/transport-commandcode",
   "version": "0.1.0",
   "private": true,
   "type": "module",

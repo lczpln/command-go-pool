@@ -8,7 +8,7 @@ function containsSecret(value: unknown, secrets: string[]): boolean {
 
 describe("security gates", () => {
   afterEach(() => {
-    delete process.env.COMMAND_GO_PROXY_HOME;
+    delete process.env.COMMAND_GO_POOL_HOME;
   });
 
   it("locks inference and admin routes when bound off loopback without an API key", async () => {
@@ -25,9 +25,9 @@ describe("security gates", () => {
     await instance.close();
   });
 
-  it("requires the proxy API key on external bind", async () => {
+  it("requires the pool API key on external bind", async () => {
     const instance = await withServer({
-      config: { server: { host: "0.0.0.0", port: 0, apiKey: "proxy-secret" } },
+      config: { server: { host: "0.0.0.0", port: 0, apiKey: "pool-secret" } },
       setup(_t, add) {
         add("Go #01");
       },
@@ -37,7 +37,7 @@ describe("security gates", () => {
     const ok = await instance.app.inject({
       method: "GET",
       url: "/v1/models",
-      headers: { authorization: "Bearer proxy-secret" },
+      headers: { authorization: "Bearer pool-secret" },
     });
     expect(ok.statusCode).toBe(200);
     await instance.close();
@@ -60,22 +60,22 @@ describe("security gates", () => {
     await instance.close();
   });
 
-  it("redacts the proxy API key from config", async () => {
+  it("redacts the pool API key from config", async () => {
     const instance = await withServer({
-      config: { server: { apiKey: "proxy-local-key" } },
+      config: { server: { apiKey: "pool-local-key" } },
     });
     const res = await instance.app.inject({
       method: "GET",
       url: "/api/config",
-      headers: { authorization: "Bearer proxy-local-key" },
+      headers: { authorization: "Bearer pool-local-key" },
     });
     expect(res.statusCode).toBe(200);
-    expect(JSON.stringify(res.json())).not.toContain("proxy-local-key");
+    expect(JSON.stringify(res.json())).not.toContain("pool-local-key");
     expect(JSON.stringify(res.json())).toContain("[set]");
     await instance.close();
   });
 
-  it("accepts accounts on loopback without a proxy key and never echoes the credential", async () => {
+  it("accepts accounts on loopback without a pool key and never echoes the credential", async () => {
     const secret = "user_web_form_secret_xyz";
     const instance = await withServer();
     const created = await instance.app.inject({
@@ -141,9 +141,9 @@ describe("security gates", () => {
     await instance.close();
   });
 
-  it("applies a proxy API key from PATCH without locking loopback admin", async () => {
+  it("applies a pool API key from PATCH without locking loopback admin", async () => {
     const instance = await withServer();
-    const secret = "live-proxy-key-xyz";
+    const secret = "live-pool-key-xyz";
     const patched = await instance.app.inject({
       method: "PATCH",
       url: "/api/config",

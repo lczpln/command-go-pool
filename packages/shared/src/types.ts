@@ -1,7 +1,7 @@
-import type { ACCOUNT_STATUSES, PROXY_ERRORS, ROUTING_MODES } from "./constants.js";
+import type { ACCOUNT_STATUSES, POOL_ERRORS, ROUTING_MODES } from "./constants.js";
 
 export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
-export type ProxyErrorCode = (typeof PROXY_ERRORS)[number];
+export type PoolErrorCode = (typeof POOL_ERRORS)[number];
 export type RoutingMode = (typeof ROUTING_MODES)[number];
 
 export type QuotaSource = "upstream" | "local-estimate" | "unknown";
@@ -138,7 +138,7 @@ export type NormalizedChunk =
   | { type: "tool-call"; id: string; name: string; arguments: unknown }
   | { type: "usage"; usage: TokenUsage }
   | { type: "finish"; reason: FinishReason; usage?: TokenUsage }
-  | { type: "error"; error: ProxyFailure };
+  | { type: "error"; error: PoolFailure };
 
 export type FinishReason = "stop" | "length" | "tool-calls" | "cancelled" | "error";
 
@@ -152,8 +152,8 @@ export interface TokenUsage {
   costSource?: QuotaSource;
 }
 
-export interface ProxyFailure {
-  code: ProxyErrorCode;
+export interface PoolFailure {
+  code: PoolErrorCode;
   message: string;
   retryable: boolean;
   failover: boolean;
@@ -199,7 +199,7 @@ export interface CommandCodeTransport {
   testCredential(account: AccountCredential): Promise<AuthResult>;
 }
 
-export interface ProxyEvent {
+export interface PoolEvent {
   id: number;
   at: Date;
   level: "info" | "warning" | "error";

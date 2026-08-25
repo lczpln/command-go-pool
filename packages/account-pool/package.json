@@ -1,5 +1,5 @@
 {
-  "name": "@command-go-proxy/account-pool",
+  "name": "@command-go-pool/account-pool",
   "version": "0.1.0",
   "private": true,
   "type": "module",

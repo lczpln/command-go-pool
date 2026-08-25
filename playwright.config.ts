@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const port = Number(process.env.E2E_PORT ?? 8797);
-const home = process.env.COMMAND_GO_PROXY_HOME ?? join(tmpdir(), "cgp-e2e-home");
+const home = process.env.COMMAND_GO_POOL_HOME ?? join(tmpdir(), "cgp-e2e-home");
 const dashboardReady = existsSync("apps/dashboard/dist/index.html");
 
 export default defineConfig({
@@ -20,9 +20,9 @@ export default defineConfig({
     timeout: 180_000,
     env: {
       ...process.env,
-      COMMAND_GO_PROXY_PORT: String(port),
-      COMMAND_GO_PROXY_HOME: home,
-      COMMAND_GO_PROXY_MASTER_KEY: process.env.COMMAND_GO_PROXY_MASTER_KEY ?? "e2e-master-key-not-for-production!!",
+      COMMAND_GO_POOL_PORT: String(port),
+      COMMAND_GO_POOL_HOME: home,
+      COMMAND_GO_POOL_MASTER_KEY: process.env.COMMAND_GO_POOL_MASTER_KEY ?? "e2e-master-key-not-for-production!!",
     },
   },
 });

@@ -1,6 +1,6 @@
-import type { Account, AccountCredential, AccountStatus, ProxyFailure } from "@command-go-proxy/shared";
-import { policyFor } from "@command-go-proxy/shared";
-import { remainingNormalized } from "@command-go-proxy/quota-engine";
+import type { Account, AccountCredential, AccountStatus, PoolFailure } from "@command-go-pool/shared";
+import { policyFor } from "@command-go-pool/shared";
+import { remainingNormalized } from "@command-go-pool/quota-engine";
 
 const UNHEALTHY: AccountStatus[] = ["disabled", "auth_error", "quota_exhausted", "cooldown", "upstream_error"];
 
@@ -16,7 +16,7 @@ export function isEligible(account: Account, model?: string, now = Date.now()): 
   return true;
 }
 
-export function applyFailure(account: Account, failure: ProxyFailure, now = new Date()): Account {
+export function applyFailure(account: Account, failure: PoolFailure, now = new Date()): Account {
   const policy = policyFor(failure.code);
   const next: Account = { ...account, lastFailureAt: now };
   if (policy.accountStatus) next.status = policy.accountStatus;

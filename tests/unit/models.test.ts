@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { catalogModels, displayNameForModel, exposedInferenceModels, isModelEnabled, parseAppConfig, setModelEnabled } from "@command-go-proxy/shared";
+import { catalogModels, displayNameForModel, exposedInferenceModels, isModelEnabled, parseAppConfig, setModelEnabled } from "@command-go-pool/shared";
 
 const config = parseAppConfig({
   aliases: {

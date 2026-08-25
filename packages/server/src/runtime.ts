@@ -1,4 +1,4 @@
-import { EventBus } from "@command-go-proxy/observability";
+import { EventBus } from "@command-go-pool/observability";
 import type { Logger } from "pino";
 import type {
   Account,
@@ -6,15 +6,15 @@ import type {
   CommandCodeTransport,
   NormalizedChunk,
   NormalizedRequest,
-  ProxyEvent,
+  PoolEvent,
   Session,
   TokenUsage,
-} from "@command-go-proxy/shared";
-import { isLoopbackHost } from "@command-go-proxy/shared";
-import type { AccountPool } from "@command-go-proxy/account-pool";
-import type { SessionRouter } from "@command-go-proxy/session-router";
-import type { EventRepo, SessionRepo, UsageRepo } from "@command-go-proxy/storage";
-import { aggregatePool } from "@command-go-proxy/quota-engine";
+} from "@command-go-pool/shared";
+import { isLoopbackHost } from "@command-go-pool/shared";
+import type { AccountPool } from "@command-go-pool/account-pool";
+import type { SessionRouter } from "@command-go-pool/session-router";
+import type { EventRepo, SessionRepo, UsageRepo } from "@command-go-pool/storage";
+import { aggregatePool } from "@command-go-pool/quota-engine";
 
 export interface Runtime {
   config: AppConfig;
@@ -29,7 +29,7 @@ export interface Runtime {
   startedAt: number;
 }
 
-export function emit(runtime: Runtime, partial: Omit<ProxyEvent, "id" | "at">): ProxyEvent {
+export function emit(runtime: Runtime, partial: Omit<PoolEvent, "id" | "at">): PoolEvent {
   const stored = runtime.events.append({ ...partial, at: new Date() });
   runtime.bus.emitEvent(stored);
   runtime.log.info({ event: stored.type, ...stored.payload });
@@ -117,7 +117,7 @@ async function* pump(
     emit(runtime, {
       level: err.code === "auth_failed" ? "error" : "warning",
       category: err.code === "auth_failed" ? "authentication" : err.failover ? "quota" : "system",
-      type: err.code === "quota_exhausted" ? "account.cooldown" : "proxy.error",
+      type: err.code === "quota_exhausted" ? "account.cooldown" : "pool.error",
       payload: { accountId: account.id, code: err.code, message: err.message, sessionId: session.id },
     });
     runtime.usage.record({

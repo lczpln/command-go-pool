@@ -1,5 +1,5 @@
 {
-  "name": "@command-go-proxy/session-router",
+  "name": "@command-go-pool/session-router",
   "version": "0.1.0",
   "private": true,
   "type": "module",

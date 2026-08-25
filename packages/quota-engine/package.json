@@ -1,5 +1,5 @@
 {
-  "name": "@command-go-proxy/quota-engine",
+  "name": "@command-go-pool/quota-engine",
   "version": "0.1.0",
   "private": true,
   "type": "module",

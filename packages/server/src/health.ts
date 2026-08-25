@@ -1,6 +1,6 @@
 import type { Runtime } from "./runtime.js";
 import { emit } from "./runtime.js";
-import type { AccountQuota, QuotaWindow } from "@command-go-proxy/shared";
+import type { AccountQuota, QuotaWindow } from "@command-go-pool/shared";
 
 export function startHealthMonitor(runtime: Runtime): () => void {
   const tick = async () => {

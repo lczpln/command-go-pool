@@ -65,10 +65,10 @@ export function parseAppConfig(raw: unknown): AppConfig {
 
 export function applyEnvOverrides(config: AppConfig, env: NodeJS.ProcessEnv = process.env): AppConfig {
   const next = structuredClone(config);
-  if (env.COMMAND_GO_PROXY_HOST) next.server.host = env.COMMAND_GO_PROXY_HOST;
-  if (env.COMMAND_GO_PROXY_PORT) next.server.port = Number(env.COMMAND_GO_PROXY_PORT);
-  if (env.COMMAND_GO_PROXY_API_KEY) next.server.apiKey = env.COMMAND_GO_PROXY_API_KEY;
-  if (env.COMMAND_GO_PROXY_LOG_LEVEL) {
+  if (env.COMMAND_GO_POOL_HOST) next.server.host = env.COMMAND_GO_POOL_HOST;
+  if (env.COMMAND_GO_POOL_PORT) next.server.port = Number(env.COMMAND_GO_POOL_PORT);
+  if (env.COMMAND_GO_POOL_API_KEY) next.server.apiKey = env.COMMAND_GO_POOL_API_KEY;
+  if (env.COMMAND_GO_POOL_LOG_LEVEL) {
     /* consumed by logger */
   }
   return next;

@@ -1,5 +1,5 @@
 {
-  "name": "@command-go-proxy/protocol-anthropic",
+  "name": "@command-go-pool/protocol-anthropic",
   "version": "0.1.0",
   "private": true,
   "type": "module",

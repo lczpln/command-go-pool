@@ -2,19 +2,19 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { parseAppConfig, failure } from "@command-go-proxy/shared";
-import { MockTransport } from "@command-go-proxy/transport-commandcode";
-import { boot } from "@command-go-proxy/server";
+import { parseAppConfig, failure } from "@command-go-pool/shared";
+import { MockTransport } from "@command-go-pool/transport-commandcode";
+import { boot } from "@command-go-pool/server";
 
 describe("chaos: 10 accounts", () => {
   afterEach(() => {
-    delete process.env.COMMAND_GO_PROXY_HOME;
+    delete process.env.COMMAND_GO_POOL_HOME;
   });
 
   it("migrates past exhausted, timeout, and auth-failed accounts onto a healthy one", async () => {
     const home = mkdtempSync(join(tmpdir(), "cgp-chaos-"));
-    process.env.COMMAND_GO_PROXY_HOME = home;
-    process.env.COMMAND_GO_PROXY_MASTER_KEY = "c".repeat(32);
+    process.env.COMMAND_GO_POOL_HOME = home;
+    process.env.COMMAND_GO_POOL_MASTER_KEY = "c".repeat(32);
     const transport = new MockTransport();
     const instance = await boot({
       config: parseAppConfig({ server: { host: "127.0.0.1", port: 0 }, routing: { maxFailoversPerRequest: 3 } }),

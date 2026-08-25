@@ -1,20 +1,20 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { parseAppConfig } from "@command-go-proxy/shared";
-import { MockTransport } from "@command-go-proxy/transport-commandcode";
-import { boot } from "@command-go-proxy/server";
+import { parseAppConfig } from "@command-go-pool/shared";
+import { MockTransport } from "@command-go-pool/transport-commandcode";
+import { boot } from "@command-go-pool/server";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 describe("persistence", () => {
   afterEach(() => {
-    delete process.env.COMMAND_GO_PROXY_HOME;
+    delete process.env.COMMAND_GO_POOL_HOME;
   });
 
   it("restores accounts, quota, sessions, and usage after restart", async () => {
     const home = mkdtempSync(join(tmpdir(), "cgp-persist-"));
-    process.env.COMMAND_GO_PROXY_HOME = home;
-    process.env.COMMAND_GO_PROXY_MASTER_KEY = "p".repeat(32);
+    process.env.COMMAND_GO_POOL_HOME = home;
+    process.env.COMMAND_GO_POOL_MASTER_KEY = "p".repeat(32);
     const transport = new MockTransport();
     const first = await boot({
       home,

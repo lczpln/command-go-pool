@@ -32,7 +32,7 @@ function describe(event: (typeof store.events)[number]): string {
   if (event.type === "account.updated") {
     return `${accountLabel(p.accountId)} updated`;
   }
-  if (event.type === "proxy.error") {
+  if (event.type === "pool.error") {
     return `${accountLabel(p.accountId)} ${p.code}: ${p.message ?? ""}`.trim();
   }
   if (event.type === "models.updated") {

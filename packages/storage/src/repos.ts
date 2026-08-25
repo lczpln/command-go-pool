@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import type { Account, AccountQuota, AccountStatus, ProxyEvent, QuotaWindow, QuotaWindowName, Session } from "@command-go-proxy/shared";
+import type { Account, AccountQuota, AccountStatus, PoolEvent, QuotaWindow, QuotaWindowName, Session } from "@command-go-pool/shared";
 
 function dt(n?: number | null): Date | undefined {
   return n ? new Date(n) : undefined;
@@ -302,22 +302,22 @@ export class UsageRepo {
 export class EventRepo {
   constructor(private readonly db: Database.Database) {}
 
-  append(event: Omit<ProxyEvent, "id">): ProxyEvent {
+  append(event: Omit<PoolEvent, "id">): PoolEvent {
     const info = this.db
-      .prepare("INSERT INTO proxy_events (level, category, type, payload_json, at) VALUES (?, ?, ?, ?, ?)")
+      .prepare("INSERT INTO pool_events (level, category, type, payload_json, at) VALUES (?, ?, ?, ?, ?)")
       .run(event.level, event.category, event.type, JSON.stringify(event.payload), event.at.getTime());
     return { ...event, id: Number(info.lastInsertRowid) };
   }
 
-  list(limit = 200, category?: string): ProxyEvent[] {
+  list(limit = 200, category?: string): PoolEvent[] {
     const rows = category
-      ? (this.db.prepare("SELECT * FROM proxy_events WHERE category = ? ORDER BY id DESC LIMIT ?").all(category, limit) as Record<string, unknown>[])
-      : (this.db.prepare("SELECT * FROM proxy_events ORDER BY id DESC LIMIT ?").all(limit) as Record<string, unknown>[]);
+      ? (this.db.prepare("SELECT * FROM pool_events WHERE category = ? ORDER BY id DESC LIMIT ?").all(category, limit) as Record<string, unknown>[])
+      : (this.db.prepare("SELECT * FROM pool_events ORDER BY id DESC LIMIT ?").all(limit) as Record<string, unknown>[]);
     return rows.map((row) => ({
       id: Number(row.id),
       at: new Date(Number(row.at)),
-      level: row.level as ProxyEvent["level"],
-      category: row.category as ProxyEvent["category"],
+      level: row.level as PoolEvent["level"],
+      category: row.category as PoolEvent["category"],
       type: String(row.type),
       payload: JSON.parse(String(row.payload_json)) as Record<string, unknown>,
     }));

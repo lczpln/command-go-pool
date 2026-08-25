@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { failure } from "@command-go-proxy/shared";
+import { failure } from "@command-go-pool/shared";
 import { withServer } from "../helpers.js";
 
 describe("inference error paths", () => {
   afterEach(() => {
-    delete process.env.COMMAND_GO_PROXY_HOME;
+    delete process.env.COMMAND_GO_POOL_HOME;
   });
 
   it("forwards vision image parts to the transport", async () => {
@@ -109,7 +109,7 @@ describe("inference error paths", () => {
         add("Go #01");
       },
     });
-    const { parseNdjsonLine } = await import("@command-go-proxy/transport-commandcode");
+    const { parseNdjsonLine } = await import("@command-go-pool/transport-commandcode");
     expect(parseNdjsonLine("not-json")).toBeUndefined();
     expect(parseNdjsonLine("{")).toBeUndefined();
     expect(parseNdjsonLine('{"type":"text-delta","text":"ok"}')).toMatchObject({ type: "text-delta", text: "ok" });

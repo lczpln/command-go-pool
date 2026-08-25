@@ -15,16 +15,16 @@
     "noUncheckedIndexedAccess": true,
     "verbatimModuleSyntax": true,
     "paths": {
-      "@command-go-proxy/shared": ["./packages/shared/src/index.ts"],
-      "@command-go-proxy/storage": ["./packages/storage/src/index.ts"],
-      "@command-go-proxy/observability": ["./packages/observability/src/index.ts"],
-      "@command-go-proxy/transport-commandcode": ["./packages/transport-commandcode/src/index.ts"],
-      "@command-go-proxy/protocol-openai": ["./packages/protocol-openai/src/index.ts"],
-      "@command-go-proxy/protocol-anthropic": ["./packages/protocol-anthropic/src/index.ts"],
-      "@command-go-proxy/account-pool": ["./packages/account-pool/src/index.ts"],
-      "@command-go-proxy/session-router": ["./packages/session-router/src/index.ts"],
-      "@command-go-proxy/quota-engine": ["./packages/quota-engine/src/index.ts"],
-      "@command-go-proxy/server": ["./packages/server/src/index.ts"]
+      "@command-go-pool/shared": ["./packages/shared/src/index.ts"],
+      "@command-go-pool/storage": ["./packages/storage/src/index.ts"],
+      "@command-go-pool/observability": ["./packages/observability/src/index.ts"],
+      "@command-go-pool/transport-commandcode": ["./packages/transport-commandcode/src/index.ts"],
+      "@command-go-pool/protocol-openai": ["./packages/protocol-openai/src/index.ts"],
+      "@command-go-pool/protocol-anthropic": ["./packages/protocol-anthropic/src/index.ts"],
+      "@command-go-pool/account-pool": ["./packages/account-pool/src/index.ts"],
+      "@command-go-pool/session-router": ["./packages/session-router/src/index.ts"],
+      "@command-go-pool/quota-engine": ["./packages/quota-engine/src/index.ts"],
+      "@command-go-pool/server": ["./packages/server/src/index.ts"]
     }
   }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { quotaScore, scoreAccount, aggregatePool, subsidyMultiplier } from "@command-go-proxy/quota-engine";
-import type { Account } from "@command-go-proxy/shared";
-import { classifyUpstreamError, identifySession, parseResetTime } from "@command-go-proxy/shared";
+import { quotaScore, scoreAccount, aggregatePool, subsidyMultiplier } from "@command-go-pool/quota-engine";
+import type { Account } from "@command-go-pool/shared";
+import { classifyUpstreamError, identifySession, parseResetTime } from "@command-go-pool/shared";
 
 function account(partial: Partial<Account> & Pick<Account, "id">): Account {
   return {

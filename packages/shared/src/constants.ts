@@ -1,5 +1,5 @@
-export const PROXY_NAME = "Command Go Proxy";
-export const PROXY_VERSION = "0.1.0";
+export const POOL_NAME = "Command Go Pool";
+export const POOL_VERSION = "0.1.0";
 export const DEFAULT_HOST = "127.0.0.1";
 export const DEFAULT_PORT = 8787;
 export const DEFAULT_SESSION_TTL_HOURS = 24;
@@ -21,7 +21,7 @@ export const ACCOUNT_STATUSES = [
   "disabled",
 ] as const;
 
-export const PROXY_ERRORS = [
+export const POOL_ERRORS = [
   "quota_exhausted",
   "rate_limited",
   "auth_failed",

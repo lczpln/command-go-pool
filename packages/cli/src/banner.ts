@@ -1,6 +1,6 @@
-import { PROXY_NAME, PROXY_VERSION } from "@command-go-proxy/shared";
-import type { Account } from "@command-go-proxy/shared";
-import { aggregatePool } from "@command-go-proxy/quota-engine";
+import { POOL_NAME, POOL_VERSION } from "@command-go-pool/shared";
+import type { Account } from "@command-go-pool/shared";
+import { aggregatePool } from "@command-go-pool/quota-engine";
 
 export function meter(ratio: number, width = 10): string {
   const filled = Math.round(Math.max(0, Math.min(1, ratio)) * width);
@@ -22,7 +22,7 @@ export function startupBanner(input: {
     return `${label.padEnd(10)}${meter(pct / 100)}${estimated ? " ~" : "  "}${Math.round(pct)}% available`;
   };
   return [
-    `\n${PROXY_NAME} v${PROXY_VERSION}`,
+    `\n${POOL_NAME} v${POOL_VERSION}`,
     "",
     `✓ Database loaded`,
     `✓ ${input.accounts.length} accounts loaded`,
@@ -61,7 +61,7 @@ export function compactStatus(input: { accounts: Account[]; api: string; dashboa
     return `${label.padEnd(10)}${meter(pct / 100)}${estimated ? " ~" : "  "}${Math.round(pct)}% available`;
   };
   return [
-    `${PROXY_NAME}`,
+    `${POOL_NAME}`,
     "",
     `API        ${input.api}`,
     `Dashboard  ${input.dashboard}`,

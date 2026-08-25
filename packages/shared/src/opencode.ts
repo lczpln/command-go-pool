@@ -32,7 +32,7 @@ export function writeOpenCodeConfig(opts: WriteOpenCodeOptions): string {
     name: "Command Go Pool",
     options: {
       baseURL: opts.baseUrl,
-      apiKey: opts.apiKey ?? process.env.COMMAND_GO_PROXY_API_KEY ?? "proxy-managed",
+      apiKey: opts.apiKey ?? process.env.COMMAND_GO_POOL_API_KEY ?? "pool-managed",
     },
     models,
   };
@@ -48,20 +48,20 @@ export function writeOpenCodeConfig(opts: WriteOpenCodeOptions): string {
   ].join("\n");
 }
 
-export async function fetchProxyModels(
+export async function fetchPoolModels(
   baseUrl: string,
   apiKey?: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<{ models: OpenCodeModelInput[]; warning?: string }> {
   const headers: Record<string, string> = {};
-  const key = apiKey ?? process.env.COMMAND_GO_PROXY_API_KEY;
+  const key = apiKey ?? process.env.COMMAND_GO_POOL_API_KEY;
   if (key) headers.authorization = `Bearer ${key}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 3_000);
   try {
     const res = await fetchImpl(`${baseUrl.replace(/\/$/, "")}/models`, { headers, signal: controller.signal });
     if (!res.ok) {
-      return { models: OPENCODE_FALLBACK_MODELS, warning: `Proxy returned HTTP ${res.status}; using fallback models.` };
+      return { models: OPENCODE_FALLBACK_MODELS, warning: `Pool returned HTTP ${res.status}; using fallback models.` };
     }
     const json = (await res.json()) as { data?: Array<{ id?: string }> };
     const models = (json.data ?? [])
@@ -69,12 +69,12 @@ export async function fetchProxyModels(
       .filter((id): id is string => Boolean(id))
       .map((id) => ({ id, name: displayNameForModel(id) }));
     if (models.length === 0) {
-      return { models: OPENCODE_FALLBACK_MODELS, warning: "Proxy returned no models; using fallback models." };
+      return { models: OPENCODE_FALLBACK_MODELS, warning: "Pool returned no models; using fallback models." };
     }
     return { models };
   } catch (error) {
     const reason = error instanceof Error ? error.message : "network error";
-    return { models: OPENCODE_FALLBACK_MODELS, warning: `Could not reach proxy (${reason}); using fallback models.` };
+    return { models: OPENCODE_FALLBACK_MODELS, warning: `Could not reach the pool (${reason}); using fallback models.` };
   } finally {
     clearTimeout(timer);
   }

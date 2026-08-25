@@ -1,15 +1,15 @@
 services:
-  proxy:
+  pool:
     build: .
     ports:
       - "8787:8787"
     environment:
-      COMMAND_GO_PROXY_HOST: "0.0.0.0"
-      COMMAND_GO_PROXY_PORT: "8787"
-      COMMAND_GO_PROXY_API_KEY: "${COMMAND_GO_PROXY_API_KEY:?set a proxy API key when exposing Docker}"
-      COMMAND_GO_PROXY_MASTER_KEY: "${COMMAND_GO_PROXY_MASTER_KEY:-}"
+      COMMAND_GO_POOL_HOST: "0.0.0.0"
+      COMMAND_GO_POOL_PORT: "8787"
+      COMMAND_GO_POOL_API_KEY: "${COMMAND_GO_POOL_API_KEY:?set a pool API key when exposing Docker}"
+      COMMAND_GO_POOL_MASTER_KEY: "${COMMAND_GO_POOL_MASTER_KEY:-}"
     volumes:
-      - command-go-proxy:/data
+      - command-go-pool:/data
 
 volumes:
-  command-go-proxy:
+  command-go-pool:

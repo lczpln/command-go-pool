@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { chmodSync } from "node:fs";
 import { ensureHome, paths } from "./paths.js";
 
-const MIGRATIONS: { name: string; sql: string }[] = [
+const MIGRATIONS: { name: string; sql?: string; run?: (db: Database.Database) => void }[] = [
   {
     name: "001_init",
     sql: `
@@ -78,7 +78,7 @@ const MIGRATIONS: { name: string; sql: string }[] = [
         estimated_cost REAL,
         at INTEGER NOT NULL
       );
-      CREATE TABLE IF NOT EXISTS proxy_events (
+      CREATE TABLE IF NOT EXISTS pool_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         level TEXT NOT NULL,
         category TEXT NOT NULL,
@@ -92,9 +92,17 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       );
       CREATE INDEX IF NOT EXISTS idx_quota_account ON quota_snapshots(account_id, captured_at);
       CREATE INDEX IF NOT EXISTS idx_usage_at ON usage_events(at);
-      CREATE INDEX IF NOT EXISTS idx_events_at ON proxy_events(at);
+      CREATE INDEX IF NOT EXISTS idx_events_at ON pool_events(at);
       CREATE INDEX IF NOT EXISTS idx_sessions_last ON sessions(last_request_at);
     `,
+  },
+  {
+    name: "002_rename_proxy_events",
+    run(db) {
+      const legacy = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='proxy_events'").get();
+      const current = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pool_events'").get();
+      if (legacy && !current) db.exec("ALTER TABLE proxy_events RENAME TO pool_events");
+    },
   },
 ];
 
@@ -114,7 +122,8 @@ export function openDatabase(home?: string): Database.Database {
   );
   for (const migration of MIGRATIONS) {
     if (applied.has(migration.name)) continue;
-    db.exec(migration.sql);
+    if (migration.run) migration.run(db);
+    else if (migration.sql) db.exec(migration.sql);
     db.prepare("INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)").run(migration.name, Date.now());
   }
   try {

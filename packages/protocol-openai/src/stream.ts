@@ -1,4 +1,4 @@
-import type { NormalizedChunk, TokenUsage } from "@command-go-proxy/shared";
+import type { NormalizedChunk, TokenUsage } from "@command-go-pool/shared";
 import { openaiUsage } from "./request.js";
 
 export function openaiChunkFrame(id: string, model: string, created: number, chunk: NormalizedChunk): string | undefined {

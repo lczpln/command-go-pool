@@ -2,15 +2,15 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { AccountPool } from "@command-go-proxy/account-pool";
-import { SessionRouter } from "@command-go-proxy/session-router";
-import { AccountRepo, SessionRepo, SecretStore, openDatabase } from "@command-go-proxy/storage";
-import { failure } from "@command-go-proxy/shared";
+import { AccountPool } from "@command-go-pool/account-pool";
+import { SessionRouter } from "@command-go-pool/session-router";
+import { AccountRepo, SessionRepo, SecretStore, openDatabase } from "@command-go-pool/storage";
+import { failure } from "@command-go-pool/shared";
 
 function harness() {
   const home = mkdtempSync(join(tmpdir(), "cgp-"));
-  process.env.COMMAND_GO_PROXY_HOME = home;
-  process.env.COMMAND_GO_PROXY_MASTER_KEY = "x".repeat(32);
+  process.env.COMMAND_GO_POOL_HOME = home;
+  process.env.COMMAND_GO_POOL_MASTER_KEY = "x".repeat(32);
   const db = openDatabase(home);
   const secrets = SecretStore.open(home);
   const pool = new AccountPool(new AccountRepo(db), secrets);
@@ -21,7 +21,7 @@ function harness() {
 
 describe("sticky routing", () => {
   afterEach(() => {
-    delete process.env.COMMAND_GO_PROXY_HOME;
+    delete process.env.COMMAND_GO_POOL_HOME;
   });
 
   it("keeps a conversation on the same account", () => {
@@ -57,8 +57,8 @@ describe("sticky routing", () => {
 
   it("expires inactive bindings", () => {
     const home = mkdtempSync(join(tmpdir(), "cgp-"));
-    process.env.COMMAND_GO_PROXY_HOME = home;
-    process.env.COMMAND_GO_PROXY_MASTER_KEY = "y".repeat(32);
+    process.env.COMMAND_GO_POOL_HOME = home;
+    process.env.COMMAND_GO_POOL_MASTER_KEY = "y".repeat(32);
     const db = openDatabase(home);
     const pool = new AccountPool(new AccountRepo(db), SecretStore.open(home));
     const sessions = new SessionRepo(db);

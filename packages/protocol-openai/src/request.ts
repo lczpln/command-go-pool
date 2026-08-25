@@ -1,4 +1,4 @@
-import type { ContentPart, NormalizedMessage, NormalizedRequest, NormalizedTool, TokenUsage } from "@command-go-proxy/shared";
+import type { ContentPart, NormalizedMessage, NormalizedRequest, NormalizedTool, TokenUsage } from "@command-go-pool/shared";
 import { z } from "zod";
 
 const partSchema = z.union([

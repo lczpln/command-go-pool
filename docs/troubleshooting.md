@@ -3,13 +3,13 @@
 ## Authentication failed
 
 - Use a Studio API key (`user_…`), not a browser cookie.
-- Paste it on the dashboard **Accounts** page (or `command-go-proxy account add`).
+- Paste it on the dashboard **Accounts** page (or `command-go-pool account add`).
 - Confirm the key with the Command Code CLI: `COMMAND_CODE_API_KEY=… cmd status`
-- The proxy never reads `~/.commandcode/auth.json` unless you paste that key yourself.
+- The pool never reads `~/.commandcode/auth.json` unless you paste that key yourself.
 
 ## Go plan and `/provider/v1/chat/completions`
 
-Official Provider API generation is not included on Go (`upgrade_required`). This proxy uses the isolated CLI generation adapter instead. Do not point clients at `https://api.commandcode.ai/provider/v1` for Go accounts.
+Official Provider API generation is not included on Go (`upgrade_required`). This pool uses the isolated CLI generation adapter instead. Do not point clients at `https://api.commandcode.ai/provider/v1` for Go accounts.
 
 ## Quota shows Unavailable
 
@@ -25,13 +25,13 @@ Reasoning models often emit `reasoning-delta` for several seconds before text. T
 
 ## Bound to 0.0.0.0 and 403
 
-Non-loopback binds require `COMMAND_GO_PROXY_API_KEY`. Admin and inference routes then require that key.
+Non-loopback binds require `COMMAND_GO_POOL_API_KEY`. Admin and inference routes then require that key.
 
 ## OpenCode did not pick up the provider
 
 `setup opencode` writes `~/.config/opencode/opencode.json` and keeps unrelated providers. If your OpenCode version uses another path, set `OPENCODE_CONFIG`. A `.bak.<timestamp>` copy is created first.
 
-The OpenCode picker does not poll `GET /v1/models`. After toggling models in the dashboard, run `command-go-proxy setup opencode` again or use **Sync OpenCode** on the Models page.
+The OpenCode picker does not poll `GET /v1/models`. After toggling models in the dashboard, run `command-go-pool setup opencode` again or use **Sync OpenCode** on the Models page.
 
 ## Upstream protocol drift
 
@@ -39,4 +39,4 @@ The OpenCode picker does not poll `GET /v1/models`. After toggling models in the
 
 ## Docker data empty after restart
 
-Mount `/data` and set `COMMAND_GO_PROXY_HOME=/data`. Also set `COMMAND_GO_PROXY_HOST=0.0.0.0` and `COMMAND_GO_PROXY_API_KEY`.
+Mount `/data` and set `COMMAND_GO_POOL_HOME=/data`. Also set `COMMAND_GO_POOL_HOST=0.0.0.0` and `COMMAND_GO_POOL_API_KEY`.

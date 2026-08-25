@@ -1,6 +1,6 @@
-import type { Account, AccountCredential, ProxyFailure } from "@command-go-proxy/shared";
-import { newId } from "@command-go-proxy/shared";
-import type { AccountRepo, SecretStore } from "@command-go-proxy/storage";
+import type { Account, AccountCredential, PoolFailure } from "@command-go-pool/shared";
+import { newId } from "@command-go-pool/shared";
+import type { AccountRepo, SecretStore } from "@command-go-pool/storage";
 import { applyFailure, applySuccess, isEligible, maybeRecover } from "./state.js";
 
 export class AccountPool {
@@ -91,7 +91,7 @@ export class AccountPool {
     return this.replace(applySuccess(this.must(id)));
   }
 
-  markFailure(id: string, failure: ProxyFailure): Account {
+  markFailure(id: string, failure: PoolFailure): Account {
     return this.replace(applyFailure(this.must(id), failure));
   }
 

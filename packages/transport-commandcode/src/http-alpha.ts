@@ -16,9 +16,9 @@ import type {
   NormalizedRequest,
   QuotaWindow,
   TokenUsage,
-} from "@command-go-proxy/shared";
-import { classifyUpstreamError, failure } from "@command-go-proxy/shared";
-import { planById, planByWindowCaps } from "@command-go-proxy/quota-engine";
+} from "@command-go-pool/shared";
+import { classifyUpstreamError, failure } from "@command-go-pool/shared";
+import { planById, planByWindowCaps } from "@command-go-pool/quota-engine";
 
 export interface HttpAlphaOptions {
   apiBase: string;

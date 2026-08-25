@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { HttpAlphaTransport, parseCreditsPayload } from "@command-go-proxy/transport-commandcode";
-import { planById, remainingNormalized } from "@command-go-proxy/quota-engine";
+import { HttpAlphaTransport, parseCreditsPayload } from "@command-go-pool/transport-commandcode";
+import { planById, remainingNormalized } from "@command-go-pool/quota-engine";
 import { withServer } from "../helpers.js";
 import { formatQuotaView } from "../../apps/dashboard/src/utils/quota.ts";
 

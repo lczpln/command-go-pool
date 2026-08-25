@@ -4,8 +4,8 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openaiChatSchema, openaiToNormalized, openaiChunkFrame, openaiFinal } from "@command-go-proxy/protocol-openai";
-import { anthropicMessageSchema, anthropicToNormalized, anthropicStreamFrames, anthropicFinal } from "@command-go-proxy/protocol-anthropic";
+import { openaiChatSchema, openaiToNormalized, openaiChunkFrame, openaiFinal } from "@command-go-pool/protocol-openai";
+import { anthropicMessageSchema, anthropicToNormalized, anthropicStreamFrames, anthropicFinal } from "@command-go-pool/protocol-anthropic";
 import {
   OPENCODE_FALLBACK_MODELS,
   catalogModels,
@@ -16,9 +16,9 @@ import {
   setModelEnabled,
   writeOpenCodeConfig,
   type AppConfig,
-} from "@command-go-proxy/shared";
-import { subsidyMultiplier } from "@command-go-proxy/quota-engine";
-import { saveConfig } from "@command-go-proxy/storage";
+} from "@command-go-pool/shared";
+import { subsidyMultiplier } from "@command-go-pool/quota-engine";
+import { saveConfig } from "@command-go-pool/storage";
 import { emit, executeRequest, overview, type Runtime } from "./runtime.js";
 import { mergeQuota } from "./health.js";
 
@@ -68,7 +68,7 @@ export async function buildApp(runtime: Runtime) {
     if (exposed && !apiKey) {
       return reply.code(403).send({
         error: {
-          message: "Binding outside localhost requires COMMAND_GO_PROXY_API_KEY. Admin and inference routes are locked.",
+          message: "Binding outside localhost requires COMMAND_GO_POOL_API_KEY. Admin and inference routes are locked.",
           type: "authentication_error",
         },
       });
@@ -81,7 +81,7 @@ export async function buildApp(runtime: Runtime) {
     const provided =
       headerMap(req.headers).authorization?.replace(/^Bearer\s+/i, "") ?? headerMap(req.headers)["x-api-key"];
     if (provided !== apiKey) {
-      return reply.code(401).send({ error: { message: "Invalid proxy API key", type: "authentication_error" } });
+      return reply.code(401).send({ error: { message: "Invalid pool API key", type: "authentication_error" } });
     }
   });
 

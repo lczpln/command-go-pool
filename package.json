@@ -1,10 +1,10 @@
 {
-  "name": "command-go-proxy",
+  "name": "command-go-pool",
   "version": "0.1.0",
   "description": "Local inference gateway that pools user-owned Command Code Go subscriptions into one sticky, quota-aware endpoint.",
   "type": "module",
   "bin": {
-    "command-go-proxy": "dist/cli.js"
+    "command-go-pool": "dist/cli.js"
   },
   "files": [
     "dist",
@@ -16,10 +16,10 @@
   },
   "scripts": {
     "dev": "tsx packages/cli/src/index.ts",
-    "dev:dashboard": "npm run dev -w @command-go-proxy/dashboard",
+    "dev:dashboard": "npm run dev -w @command-go-pool/dashboard",
     "build": "rm -rf dist && npm run build:dashboard && npm run build:cli && mkdir -p dist/dashboard && cp -R apps/dashboard/dist/. dist/dashboard/ && chmod +x dist/cli.js",
     "build:cli": "tsup --config tsup.config.ts",
-    "build:dashboard": "npm run build -w @command-go-proxy/dashboard",
+    "build:dashboard": "npm run build -w @command-go-pool/dashboard",
     "demo": "tsx examples/demo-mock.ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -28,7 +28,7 @@
   },
   "keywords": [
     "command-code",
-    "proxy",
+    "pool",
     "openai",
     "anthropic",
     "opencode"
@@ -36,7 +36,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/command-go-proxy/command-go-proxy"
+    "url": "https://github.com/lczpln/command-go-pool"
   },
   "workspaces": [
     "apps/*",

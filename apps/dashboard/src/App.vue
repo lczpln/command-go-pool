@@ -21,7 +21,7 @@ const links = [
       <aside class="md:w-44 md:shrink-0">
         <img src="/favicon.svg" alt="" width="28" height="28" class="size-7" />
         <p class="mt-3 font-mono text-[11px] tracking-[0.3em] text-amber">CGP</p>
-        <p class="mt-2 text-sm">Command Go Proxy</p>
+        <p class="mt-2 text-sm">Command Go Pool</p>
         <nav class="mt-6 flex flex-row gap-3 overflow-x-auto md:flex-col md:gap-1">
           <RouterLink
             v-for="link in links"

@@ -87,7 +87,7 @@ async function submit() {
       </button>
     </form>
     <p class="border-t border-line px-4 py-2 font-mono text-[11px] text-mist">
-      The key is encrypted at rest and never shown again. Paste a Studio key you own — the proxy will not create accounts.
+      The key is encrypted at rest and never shown again. Paste a Studio key you own — the pool will not create accounts.
     </p>
     <p v-if="result" class="px-4 pb-3 font-mono text-[12px]" :class="result.ok ? 'text-ok' : 'text-bad'">
       {{ result.ok ? "✓" : "✗" }} {{ result.message }}

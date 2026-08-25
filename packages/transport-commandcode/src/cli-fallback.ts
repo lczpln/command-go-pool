@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import type { AccountCredential, AuthResult } from "@command-go-proxy/shared";
+import type { AccountCredential, AuthResult } from "@command-go-pool/shared";
 
 /**
  * Optional CLI fallback for credential checks only.

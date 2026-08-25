@@ -2,7 +2,7 @@
 
 ## Product
 
-Command Go Proxy is a **local inference gateway**. Clients see one OpenAI/Anthropic URL. The operator sees every account, quota window, session, and migration.
+Command Go Pool is a **local inference gateway**. Clients see one OpenAI/Anthropic URL. The operator sees every account, quota window, session, and migration.
 
 ## ADR-1 — Isolate Command Code behind `CommandCodeTransport`
 
@@ -35,15 +35,15 @@ Max 2 account migrations per request. Retry only `quota_exhausted`, `rate_limite
 
 ## ADR-5 — Single process
 
-Fastify serves `/v1/*`, `/api/*`, dashboard static assets, and SSE. SQLite in `~/.command-go-proxy/state.db`. No Redis.
+Fastify serves `/v1/*`, `/api/*`, dashboard static assets, and SSE. SQLite in `~/.command-go-pool/state.db`. No Redis.
 
 ## ADR-6 — Secrets
 
-SQLite stores `credential_ref` only. Secret payload is AES-256-GCM in `secrets.bin`, keyed by `COMMAND_GO_PROXY_MASTER_KEY` or a 0600 `master.key`. Optional OS keychain when `keytar` loads. Docker: env or mounted file.
+SQLite stores `credential_ref` only. Secret payload is AES-256-GCM in `secrets.bin`, keyed by `COMMAND_GO_POOL_MASTER_KEY` or a 0600 `master.key`. Optional OS keychain when `keytar` loads. Docker: env or mounted file.
 
 ## ADR-7 — Localhost default
 
-Bind `127.0.0.1`. Binding non-loopback requires `COMMAND_GO_PROXY_API_KEY` (or config `server.apiKey`) and authenticates **both** inference and admin routes. Dashboard never returns credentials.
+Bind `127.0.0.1`. Binding non-loopback requires `COMMAND_GO_POOL_API_KEY` (or config `server.apiKey`) and authenticates **both** inference and admin routes. Dashboard never returns credentials.
 
 ## Package graph
 

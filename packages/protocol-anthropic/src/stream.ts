@@ -1,4 +1,4 @@
-import type { NormalizedChunk, TokenUsage } from "@command-go-proxy/shared";
+import type { NormalizedChunk, TokenUsage } from "@command-go-pool/shared";
 
 export function anthropicStreamFrames(messageId: string, model: string, chunk: NormalizedChunk, state: { started: boolean; block: number }): string {
   const frames: string[] = [];

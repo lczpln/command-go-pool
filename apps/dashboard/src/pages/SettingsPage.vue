@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { store } from "../composables/usePool";
 import AddAccountForm from "../components/AddAccountForm.vue";
-import ProxyKeyForm from "../components/ProxyKeyForm.vue";
+import PoolKeyForm from "../components/PoolKeyForm.vue";
 import Skeleton from "../components/Skeleton.vue";
 </script>
 
@@ -9,7 +9,7 @@ import Skeleton from "../components/Skeleton.vue";
   <div class="space-y-4">
     <h1 class="text-lg">Settings</h1>
     <AddAccountForm />
-    <ProxyKeyForm />
+    <PoolKeyForm />
     <section class="border border-line bg-panel">
       <header class="border-b border-line px-4 py-3">
         <p class="font-mono text-[11px] tracking-[0.28em] text-mist">RUNTIME</p>

@@ -1,4 +1,4 @@
-import type { Account, AccountQuota, QuotaWindow, QuotaWindowName } from "@command-go-proxy/shared";
+import type { Account, AccountQuota, QuotaWindow, QuotaWindowName } from "@command-go-pool/shared";
 
 export interface PlanCaps {
   id: string;

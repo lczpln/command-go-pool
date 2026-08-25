@@ -1,4 +1,4 @@
-import type { ContentPart, NormalizedMessage, NormalizedRequest, NormalizedTool } from "@command-go-proxy/shared";
+import type { ContentPart, NormalizedMessage, NormalizedRequest, NormalizedTool } from "@command-go-pool/shared";
 import { z } from "zod";
 
 const imageSource = z.object({

@@ -1,17 +1,17 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseAppConfig, type AppConfig } from "@command-go-proxy/shared";
-import { MockTransport } from "@command-go-proxy/transport-commandcode";
-import { boot } from "@command-go-proxy/server";
+import { parseAppConfig, type AppConfig } from "@command-go-pool/shared";
+import { MockTransport } from "@command-go-pool/transport-commandcode";
+import { boot } from "@command-go-pool/server";
 
 export async function withServer(opts?: {
   setup?: (transport: MockTransport, add: (label: string) => string, instance: Awaited<ReturnType<typeof boot>>) => void;
   config?: Record<string, unknown>;
 }) {
   const home = mkdtempSync(join(tmpdir(), "cgp-"));
-  process.env.COMMAND_GO_PROXY_HOME = home;
-  process.env.COMMAND_GO_PROXY_MASTER_KEY ??= "z".repeat(32);
+  process.env.COMMAND_GO_POOL_HOME = home;
+  process.env.COMMAND_GO_POOL_MASTER_KEY ??= "z".repeat(32);
   const transport = new MockTransport();
   const raw = opts?.config ?? {};
   const server = { host: "127.0.0.1", port: 0, ...((raw.server as object) ?? {}) };

@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test.describe("dashboard", () => {
   test("overview shows the pool and per-account quota windows", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText("Command Go Proxy")).toBeVisible();
+    await expect(page.getByText("Command Go Pool")).toBeVisible();
     await expect(page.getByText("Local inference gateway")).toBeVisible();
     await expect(page.getByText("GO #01")).toBeVisible();
     await expect(page.getByText("GO #10")).toBeVisible();
@@ -70,11 +70,31 @@ test.describe("dashboard", () => {
     await expect(card).toHaveCount(0);
   });
 
-  test("settings lets you set a local proxy key without echoing it", async ({ page }) => {
+  test("settings generates a local pool key you can rotate", async ({ page, request }) => {
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.goto("/settings");
     await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
     await expect(page.getByText("LOCAL PROXY KEY")).toBeVisible();
-    await expect(page.getByText("COMMAND_GO_PROXY_API_KEY")).toBeVisible();
+    await expect(page.getByText("COMMAND_GO_POOL_API_KEY")).toBeVisible();
+    const section = page.locator("section").filter({ hasText: "LOCAL PROXY KEY" });
+    const input = section.locator("input");
+    await expect(input).toHaveValue(/^cgp_[0-9a-f]{48}$/);
+    const issued = await input.inputValue();
+    await expect(section.getByRole("button", { name: "Copy" })).toBeVisible();
+    await section.getByRole("button", { name: "Copy" }).click();
+    await expect(section.getByRole("button", { name: "Copied" })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(issued);
+    try {
+      await section.getByRole("button", { name: "Rotate" }).click();
+      await expect(section.getByText("Local pool key saved")).toBeVisible();
+      await expect(input).toHaveValue(issued);
+      await section.getByRole("button", { name: "Rotate" }).click();
+      await expect(section.getByText("Local pool key rotated")).toBeVisible();
+      await expect(input).not.toHaveValue(issued);
+      await expect(input).toHaveValue(/^cgp_[0-9a-f]{48}$/);
+    } finally {
+      await request.patch("/api/config", { data: { server: { apiKey: "" } } });
+    }
     await expect(page.getByText("COMMISSION ACCOUNT")).toBeVisible();
   });
 });

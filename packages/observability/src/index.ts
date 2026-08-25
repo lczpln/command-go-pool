@@ -1,8 +1,8 @@
 import pino from "pino";
 import { EventEmitter } from "node:events";
-import type { ProxyEvent } from "@command-go-proxy/shared";
+import type { PoolEvent } from "@command-go-pool/shared";
 
-export function createLogger(level = process.env.COMMAND_GO_PROXY_LOG_LEVEL ?? "info") {
+export function createLogger(level = process.env.COMMAND_GO_POOL_LOG_LEVEL ?? "info") {
   const pretty = process.stdout.isTTY && !process.env.CI;
   return pino({
     level,
@@ -24,12 +24,12 @@ export function createLogger(level = process.env.COMMAND_GO_PROXY_LOG_LEVEL ?? "
 }
 
 export class EventBus extends EventEmitter {
-  emitEvent(event: ProxyEvent): void {
+  emitEvent(event: PoolEvent): void {
     this.emit("event", event);
     this.emit(event.type, event);
   }
 
-  onEvent(handler: (event: ProxyEvent) => void): () => void {
+  onEvent(handler: (event: PoolEvent) => void): () => void {
     this.on("event", handler);
     return () => this.off("event", handler);
   }

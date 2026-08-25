@@ -16,4 +16,5 @@ test-results/
 .cache/
 *.tsbuildinfo
 
+.command-go-pool/
 .command-go-proxy/

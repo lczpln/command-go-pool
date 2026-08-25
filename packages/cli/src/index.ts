@@ -1,10 +1,10 @@
 import { Command } from "commander";
 import { input, password, confirm } from "@inquirer/prompts";
-import { PROXY_NAME, PROXY_VERSION, parseAppConfig } from "@command-go-proxy/shared";
-import { AccountRepo, SessionRepo, SecretStore, existsConfig, loadConfig, openDatabase, saveConfig } from "@command-go-proxy/storage";
-import { AccountPool } from "@command-go-proxy/account-pool";
-import { HttpAlphaTransport } from "@command-go-proxy/transport-commandcode";
-import { boot, overview } from "@command-go-proxy/server";
+import { POOL_NAME, POOL_VERSION, parseAppConfig } from "@command-go-pool/shared";
+import { AccountRepo, SessionRepo, SecretStore, existsConfig, loadConfig, openDatabase, saveConfig } from "@command-go-pool/storage";
+import { AccountPool } from "@command-go-pool/account-pool";
+import { HttpAlphaTransport } from "@command-go-pool/transport-commandcode";
+import { boot, overview } from "@command-go-pool/server";
 import { compactStatus, startupBanner } from "./banner.js";
 import { onboard } from "./onboard.js";
 import { setupClaude, setupOpenCode } from "./setup.js";
@@ -53,7 +53,7 @@ async function cmdStart() {
 
 function program() {
   const cli = new Command();
-  cli.name("command-go-proxy").description(PROXY_NAME).version(PROXY_VERSION);
+  cli.name("command-go-pool").description(POOL_NAME).version(POOL_VERSION);
 
   cli.action(async () => {
     await cmdStart();
@@ -66,7 +66,7 @@ function program() {
     db.close();
   });
 
-  cli.command("start").description("Start the proxy; add accounts in the dashboard").action(async () => {
+  cli.command("start").description("Start the pool; add accounts in the dashboard").action(async () => {
     await cmdStart();
   });
 

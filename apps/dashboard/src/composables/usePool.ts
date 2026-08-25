@@ -107,7 +107,7 @@ export async function testAccount(id: string) {
   return result;
 }
 
-export async function saveProxyApiKey(apiKey: string) {
+export async function savePoolApiKey(apiKey: string) {
   await json("/api/config", {
     method: "PATCH",
     headers: { "content-type": "application/json" },
@@ -169,7 +169,7 @@ export function useLive() {
     const bump = () => {
       void refreshAll();
     };
-    for (const name of ["account.updated", "account.cooldown", "account.recovered", "session.started", "session.migrated", "session.ended", "usage.updated", "proxy.error", "models.updated", "hello"]) {
+    for (const name of ["account.updated", "account.cooldown", "account.recovered", "session.started", "session.migrated", "session.ended", "usage.updated", "pool.error", "models.updated", "hello"]) {
       es.addEventListener(name, bump);
     }
   });
