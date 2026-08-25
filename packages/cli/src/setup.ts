@@ -17,13 +17,8 @@ export function setupOpenCodeFromConfig(
   return connectClient("opencode", config, opts).then(({ result }) => result.message);
 }
 
-export async function setupClaude(
-  baseUrl = "http://127.0.0.1:8787",
-  file?: string,
-  opts: { apiKey?: string } = {},
-): Promise<string> {
-  const config = parseAppConfig({ server: { ...parseServerFromUrl(baseUrl), apiKey: opts.apiKey } });
-  const { result } = await connectClient("claude", config, { file, apiKey: opts.apiKey });
+export async function setupClaude(config: AppConfig, file?: string): Promise<string> {
+  const { result } = await connectClient("claude", config, { file, apiKey: config.server.apiKey });
   return result.message;
 }
 

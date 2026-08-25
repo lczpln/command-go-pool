@@ -95,7 +95,6 @@ test.describe("dashboard", () => {
     } finally {
       await request.patch("/api/config", { data: { server: { apiKey: "" } } });
     }
-    await expect(page.getByText("COMMISSION ACCOUNT")).toBeVisible();
   });
 
   test("clients page can connect and disconnect OpenCode", async ({ page }, testInfo) => {

@@ -50,6 +50,9 @@ async function cmdStart() {
       models,
     }),
   );
+  if (instance.runtime.config.server.apiKey) {
+    console.log("Pool API key is set. Inference requires Authorization: Bearer.\n");
+  }
   if (instance.runtime.pool.list().length === 0) {
     console.log("No Command Code accounts yet.");
     console.log(`Open ${dashboard} → Accounts and paste a Studio API key.\n`);
@@ -96,7 +99,7 @@ function program() {
   });
 
   cli.command("init").description("Create config, wire CLIs, and optionally add accounts from the CLI").action(async () => {
-    saveConfig(parseAppConfig({}));
+    if (!existsConfig()) saveConfig(parseAppConfig({}));
     const { db, pool, transport } = poolFromDisk();
     const startPool = await onboard(pool, transport);
     db.close();

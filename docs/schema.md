@@ -2,6 +2,8 @@
 
 Default directory: `~/.command-go-pool/` (`COMMAND_GO_POOL_HOME` override). Files: `state.db`, `config.yaml`, `secrets.bin`, `master.key`, `logs/`. Connected CLIs are listed under `clients.connected` in `config.yaml`, not in SQLite.
 
+`config.yaml` may include `server.apiKey` (optional, mode `0600`). It is not generated on first start.
+
 Mode `0700` on the directory, `0600` on db/config/secrets.
 
 ## Tables

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { withServer } from "../helpers.js";
+import { withServer, poolHeaders } from "../helpers.js";
 
 function containsSecret(value: unknown, secrets: string[]): boolean {
   const raw = JSON.stringify(value);
@@ -25,7 +25,7 @@ describe("security gates", () => {
     await instance.close();
   });
 
-  it("requires the pool API key on external bind", async () => {
+  it("requires the pool API key on external bind when one is set", async () => {
     const instance = await withServer({
       config: { server: { host: "0.0.0.0", port: 0, apiKey: "pool-secret" } },
       setup(_t, add) {
@@ -52,7 +52,11 @@ describe("security gates", () => {
     });
     const paths = ["/api/accounts", "/api/config", "/api/events", "/api/health", "/api/sessions", "/api/usage", "/api/oauth/usage", "/v1/usage"];
     for (const path of paths) {
-      const res = await instance.app.inject({ method: "GET", url: path });
+      const res = await instance.app.inject({
+        method: "GET",
+        url: path,
+        headers: path.startsWith("/v1/") ? poolHeaders(instance) : undefined,
+      });
       expect(res.statusCode).toBe(200);
       expect(containsSecret(res.json(), [secret])).toBe(false);
       expect(JSON.stringify(res.json())).not.toMatch(/credentialRef/);
@@ -75,7 +79,7 @@ describe("security gates", () => {
     await instance.close();
   });
 
-  it("accepts accounts on loopback without a pool key and never echoes the credential", async () => {
+  it("accepts accounts on loopback admin without sending the pool key and never echoes the credential", async () => {
     const secret = "user_web_form_secret_xyz";
     const instance = await withServer();
     const created = await instance.app.inject({
@@ -164,6 +168,22 @@ describe("security gates", () => {
 
     const admin = await instance.app.inject({ method: "GET", url: "/api/health" });
     expect(admin.statusCode).toBe(200);
+    await instance.close();
+  });
+
+  it("allows clearing the pool API key", async () => {
+    const instance = await withServer({
+      config: { server: { apiKey: "live-pool-key-xyz" } },
+    });
+    const res = await instance.app.inject({
+      method: "PATCH",
+      url: "/api/config",
+      payload: { server: { apiKey: "" } },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(instance.runtime.config.server.apiKey).toBeUndefined();
+    const open = await instance.app.inject({ method: "GET", url: "/v1/models" });
+    expect(open.statusCode).toBe(200);
     await instance.close();
   });
 });

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { failure } from "@command-go-pool/shared";
-import { withServer } from "../helpers.js";
+import { withServer, poolHeaders } from "../helpers.js";
 
 describe("inference error paths", () => {
   afterEach(() => {
@@ -16,6 +16,7 @@ describe("inference error paths", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/chat/completions",
+      headers: poolHeaders(instance),
       payload: {
         model: "deepseek/deepseek-v4-flash-vision-exp",
         messages: [
@@ -51,6 +52,7 @@ describe("inference error paths", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/chat/completions",
+      headers: poolHeaders(instance),
       payload: { model: "deepseek/deepseek-v4-flash", messages: [{ role: "user", content: "hi" }] },
     });
     expect(res.statusCode).toBe(200);
@@ -75,7 +77,7 @@ describe("inference error paths", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/chat/completions",
-      headers: { "x-command-go-session": "ses_q" },
+      headers: poolHeaders(instance, { "x-command-go-session": "ses_q" }),
       payload: { model: "deepseek/deepseek-v4-flash", messages: [{ role: "user", content: "hi" }] },
     });
     expect(res.statusCode).toBe(200);
@@ -96,6 +98,7 @@ describe("inference error paths", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/chat/completions",
+      headers: poolHeaders(instance),
       payload: { model: "deepseek/deepseek-v4-flash", messages: [{ role: "user", content: "hi" }] },
     });
     expect(res.statusCode).toBeGreaterThanOrEqual(400);
@@ -133,6 +136,7 @@ describe("inference error paths", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/chat/completions",
+      headers: poolHeaders(instance),
       payload: { model: "deepseek/deepseek-v4-flash", messages: [{ role: "user", content: "hi" }] },
     });
     expect(res.statusCode).toBe(200);
@@ -157,6 +161,7 @@ describe("inference error paths", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/chat/completions",
+      headers: poolHeaders(instance),
       payload: { model: "deepseek/deepseek-v4-flash", messages: [{ role: "user", content: "hi" }] },
     });
     expect(res.json().choices[0].message.content).toBe("fast");
@@ -180,6 +185,7 @@ describe("inference error paths", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/chat/completions",
+      headers: poolHeaders(instance),
       payload: { model: "deepseek/deepseek-v4-flash", messages: [{ role: "user", content: "hi" }] },
     });
     expect(res.json().choices[0].message.content).toBe("live");

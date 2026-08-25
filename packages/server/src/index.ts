@@ -3,7 +3,7 @@ import { AccountPool } from "@command-go-pool/account-pool";
 import { SessionRouter } from "@command-go-pool/session-router";
 import { HttpAlphaTransport, MockTransport } from "@command-go-pool/transport-commandcode";
 import { AccountRepo, EventRepo, SessionRepo, UsageRepo, openDatabase, SecretStore, loadConfig } from "@command-go-pool/storage";
-import type { AppConfig, CommandCodeTransport } from "@command-go-pool/shared";
+import { type AppConfig, type CommandCodeTransport } from "@command-go-pool/shared";
 import { buildApp } from "./app.js";
 import { startHealthMonitor } from "./health.js";
 import type { Runtime } from "./runtime.js";
@@ -15,7 +15,12 @@ export interface BootOptions {
 }
 
 export async function boot(options: BootOptions = {}) {
-  const config = options.config ?? loadConfig(options.home);
+  const loaded = loadConfig(options.home);
+  const config = options.config ?? loaded;
+  if (!config.server.apiKey?.trim() && loaded.server.apiKey?.trim()) {
+    config.server.apiKey = loaded.server.apiKey.trim();
+  }
+  const poolApiKeyGenerated = false;
   const log = createLogger();
   const db = openDatabase(options.home);
   const secrets = SecretStore.open(options.home);
@@ -55,6 +60,7 @@ export async function boot(options: BootOptions = {}) {
   return {
     runtime,
     app,
+    poolApiKeyGenerated,
     async listen() {
       await app.listen({ host: config.server.host, port: config.server.port });
       stopHealth = startHealthMonitor(runtime);

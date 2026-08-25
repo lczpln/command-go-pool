@@ -5,6 +5,17 @@ import { parseAppConfig, type AppConfig } from "@command-go-pool/shared";
 import { MockTransport } from "@command-go-pool/transport-commandcode";
 import { boot } from "@command-go-pool/server";
 
+export function poolHeaders(
+  instance: { runtime: { config: { server: { apiKey?: string } } } },
+  extra: Record<string, string> = {},
+): Record<string, string> {
+  const apiKey = instance.runtime.config.server.apiKey;
+  return {
+    ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+    ...extra,
+  };
+}
+
 export async function withServer(opts?: {
   setup?: (transport: MockTransport, add: (label: string) => string, instance: Awaited<ReturnType<typeof boot>>) => void;
   config?: Record<string, unknown>;

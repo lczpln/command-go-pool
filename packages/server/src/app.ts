@@ -102,12 +102,11 @@ export async function buildApp(runtime: Runtime) {
     const isInference = path.startsWith("/v1/");
     const isAdmin = path.startsWith("/api/");
     const isDashboard = !isInference && !isAdmin;
-    const apiKey = runtime.config.server.apiKey;
+    const apiKey = runtime.config.server.apiKey?.trim();
     const exposed = !isLoopbackHost(runtime.config.server.host);
     if (!apiKey) return;
     if (!exposed && !isInference) return;
-    if (isDashboard && req.method === "GET" && !exposed) return;
-    if (isDashboard && req.method === "GET") return;
+    if (isDashboard && (req.method === "GET" || req.method === "HEAD")) return;
     const provided =
       headerMap(req.headers).authorization?.replace(/^Bearer\s+/i, "") ?? headerMap(req.headers)["x-api-key"];
     if (provided !== apiKey) {

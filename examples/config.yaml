@@ -1,6 +1,7 @@
 server:
   host: 127.0.0.1
   port: 8787
+  # apiKey is optional. Generate with `command-go-pool rotate` or Settings. Override with COMMAND_GO_POOL_API_KEY.
 routing:
   mode: sticky
   sessionTtlHours: 24
