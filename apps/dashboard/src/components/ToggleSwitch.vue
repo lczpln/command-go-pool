@@ -15,7 +15,7 @@ defineEmits<{ toggle: [] }>();
   <button
     type="button"
     role="switch"
-    class="group inline-flex items-center gap-2 font-mono text-[11px] tracking-widest disabled:opacity-50"
+    class="group inline-flex shrink-0 items-center gap-2.5 font-mono text-[11px] tracking-widest disabled:opacity-50"
     :class="props.on ? 'text-ok' : 'text-mist'"
     :aria-checked="props.on"
     :aria-busy="props.busy || undefined"
@@ -24,10 +24,13 @@ defineEmits<{ toggle: [] }>();
     @click="$emit('toggle')"
   >
     <span
-      class="relative inline-flex h-[18px] w-[32px] items-center border px-[3px] transition-colors group-hover:border-amber group-focus-visible:border-amber"
-      :class="props.on ? 'justify-end border-ok bg-ok/10' : 'justify-start border-line bg-ink'"
+      class="relative block h-6 w-12 border bg-ink transition-colors group-hover:border-amber group-focus-visible:border-amber"
+      :class="props.on ? 'border-ok' : 'border-mist/55'"
     >
-      <span class="inline-block size-[10px]" :class="props.on ? 'bg-ok' : 'bg-mist'" />
+      <span
+        class="absolute top-[4px] size-4 transition-[left] duration-150 ease-out"
+        :class="props.on ? 'left-[28px] bg-ok' : 'left-[4px] bg-mist'"
+      />
     </span>
     {{ props.on ? "ENABLED" : "DISABLED" }}
   </button>

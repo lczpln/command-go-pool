@@ -41,8 +41,8 @@ async function sync() {
   try {
     const result = await syncClients();
     const detail = result.clients
-      .filter((client) => client.connected && client.message)
-      .map((client) => client.message)
+      .filter((client) => client.synced || (client.connected && client.message))
+      .map((client) => `${client.name} · ${client.file}`)
       .join("\n");
     const parts = [result.message, result.warning, detail].filter(Boolean);
     syncResult.value = {
