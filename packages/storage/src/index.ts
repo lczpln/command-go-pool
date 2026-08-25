@@ -28,3 +28,4 @@ export { dataHome, ensureHome, paths, existsConfig } from "./paths.js";
 export { SecretStore } from "./secrets.js";
 export { openDatabase } from "./db.js";
 export { AccountRepo, SessionRepo, UsageRepo, EventRepo } from "./repos.js";
+export type { UsageFilter } from "./repos.js";

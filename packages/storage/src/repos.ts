@@ -220,6 +220,44 @@ export class SessionRepo {
   }
 }
 
+export type UsageFilter = {
+  accountId?: string;
+  model?: string;
+  sessionId?: string;
+};
+
+type UsageGroup = "account" | "model" | "session";
+
+const GROUP_COLUMN: Record<UsageGroup, string> = {
+  account: "account_id",
+  model: "model",
+  session: "session_id",
+};
+
+const GROUP_OMIT: Record<UsageGroup, keyof UsageFilter> = {
+  account: "accountId",
+  model: "model",
+  session: "sessionId",
+};
+
+function usageWhere(since: number, filter?: UsageFilter, omit?: keyof UsageFilter): { sql: string; params: Array<number | string> } {
+  const clauses = ["at >= ?"];
+  const params: Array<number | string> = [since];
+  if (filter?.accountId && omit !== "accountId") {
+    clauses.push("account_id = ?");
+    params.push(filter.accountId);
+  }
+  if (filter?.model && omit !== "model") {
+    clauses.push("model = ?");
+    params.push(filter.model);
+  }
+  if (filter?.sessionId && omit !== "sessionId") {
+    clauses.push("session_id = ?");
+    params.push(filter.sessionId);
+  }
+  return { sql: clauses.join(" AND "), params };
+}
+
 export class UsageRepo {
   constructor(private readonly db: Database.Database) {}
 
@@ -260,8 +298,9 @@ export class UsageRepo {
       );
   }
 
-  rollup(since: number, group?: "account" | "model" | "session"): Record<string, unknown>[] {
-    const groupCol = group === "account" ? "account_id" : group === "model" ? "model" : group === "session" ? "session_id" : null;
+  rollup(since: number, group?: UsageGroup, filter?: UsageFilter): Record<string, unknown>[] {
+    const groupCol = group ? GROUP_COLUMN[group] : null;
+    const { sql, params } = usageWhere(since, filter, group ? GROUP_OMIT[group] : undefined);
     if (!groupCol) {
       return this.db
         .prepare(
@@ -269,23 +308,24 @@ export class UsageRepo {
             SUM(cache_write_tokens) as cacheWriteTokens, SUM(output_tokens) as outputTokens, SUM(reasoning_tokens) as reasoningTokens,
             SUM(CASE WHEN error IS NOT NULL THEN 1 ELSE 0 END) as errors, SUM(estimated_cost) as estimatedCost,
             AVG(latency_ms) as latencyAvg, AVG(ttft_ms) as ttftAvg
-           FROM usage_events WHERE at >= ?`,
+           FROM usage_events WHERE ${sql}`,
         )
-        .all(since) as Record<string, unknown>[];
+        .all(...params) as Record<string, unknown>[];
     }
     return this.db
       .prepare(
         `SELECT ${groupCol} as key, COUNT(*) as requests, SUM(input_tokens) as inputTokens, SUM(cache_read_tokens) as cacheReadTokens,
           SUM(output_tokens) as outputTokens, SUM(estimated_cost) as estimatedCost
-         FROM usage_events WHERE at >= ? GROUP BY ${groupCol}`,
+         FROM usage_events WHERE ${sql} GROUP BY ${groupCol}`,
       )
-      .all(since) as Record<string, unknown>[];
+      .all(...params) as Record<string, unknown>[];
   }
 
-  series(since: number, bucketMs: number): { t: number; requests: number; tokens: number; cost: number }[] {
+  series(since: number, bucketMs: number, filter?: UsageFilter): { t: number; requests: number; tokens: number; cost: number }[] {
+    const { sql, params } = usageWhere(since, filter);
     const rows = this.db
-      .prepare("SELECT at, input_tokens, cache_read_tokens, output_tokens, estimated_cost FROM usage_events WHERE at >= ? ORDER BY at")
-      .all(since) as { at: number; input_tokens: number; cache_read_tokens: number; output_tokens: number; estimated_cost: number | null }[];
+      .prepare(`SELECT at, input_tokens, cache_read_tokens, output_tokens, estimated_cost FROM usage_events WHERE ${sql} ORDER BY at`)
+      .all(...params) as { at: number; input_tokens: number; cache_read_tokens: number; output_tokens: number; estimated_cost: number | null }[];
     const buckets = new Map<number, { requests: number; tokens: number; cost: number }>();
     for (const row of rows) {
       const t = Math.floor(row.at / bucketMs) * bucketMs;

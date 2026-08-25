@@ -134,6 +134,15 @@ export async function syncOpenCode() {
   return result;
 }
 
+export async function fetchUsage(filter?: { accountId?: string; model?: string; sessionId?: string }) {
+  const qs = new URLSearchParams();
+  if (filter?.accountId) qs.set("account", filter.accountId);
+  if (filter?.model) qs.set("model", filter.model);
+  if (filter?.sessionId) qs.set("session", filter.sessionId);
+  const suffix = qs.size ? `?${qs}` : "";
+  return json<Record<string, unknown>>(`/api/usage${suffix}`);
+}
+
 export async function refreshAll() {
   const [health, accounts, sessions, usage, events, config, models] = await Promise.all([
     json<Record<string, unknown>>("/api/health"),

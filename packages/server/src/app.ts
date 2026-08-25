@@ -348,26 +348,33 @@ export async function buildApp(runtime: Runtime) {
     return { session, migrations: runtime.sessions.bindings(id) };
   });
 
-  app.get("/api/usage", async () => {
+  app.get("/api/usage", async (req) => {
+    const query = req.query as { account?: string; model?: string; session?: string };
+    const filter = {
+      accountId: query.account || undefined,
+      model: query.model || undefined,
+      sessionId: query.session || undefined,
+    };
+    const scoped = filter.accountId || filter.model || filter.sessionId ? filter : undefined;
     const now = Date.now();
     const day = now - 86_400_000;
     const week = now - 7 * 86_400_000;
     const month = now - 30 * 86_400_000;
     const accounts = runtime.pool.list();
     const paid = accounts.reduce((s, a) => s + (a.monthlySubscriptionCost ?? 0), 0);
-    const monthRollup = runtime.usage.rollup(month)[0] as { estimatedCost?: number; requests?: number; inputTokens?: number; cacheReadTokens?: number; outputTokens?: number } | undefined;
+    const monthRollup = runtime.usage.rollup(month, undefined, scoped)[0] as { estimatedCost?: number; requests?: number; inputTokens?: number; cacheReadTokens?: number; outputTokens?: number } | undefined;
     const consumed = Number(monthRollup?.estimatedCost ?? 0);
     const cacheRead = Number(monthRollup?.cacheReadTokens ?? 0);
     const input = Number(monthRollup?.inputTokens ?? 0);
     const cacheHit = cacheRead + input > 0 ? cacheRead / (cacheRead + input) : undefined;
     return {
-      today: runtime.usage.rollup(day)[0],
-      week: runtime.usage.rollup(week)[0],
+      today: runtime.usage.rollup(day, undefined, scoped)[0],
+      week: runtime.usage.rollup(week, undefined, scoped)[0],
       month: monthRollup,
-      byAccount: runtime.usage.rollup(month, "account"),
-      byModel: runtime.usage.rollup(month, "model"),
-      bySession: runtime.usage.rollup(month, "session"),
-      series: runtime.usage.series(week, 3600_000),
+      byAccount: runtime.usage.rollup(month, "account", scoped),
+      byModel: runtime.usage.rollup(month, "model", scoped),
+      bySession: runtime.usage.rollup(month, "session", scoped),
+      series: runtime.usage.series(week, 3600_000, scoped),
       paid,
       consumed: consumed || undefined,
       subsidy: paid && consumed ? subsidyMultiplier(paid, consumed) : undefined,

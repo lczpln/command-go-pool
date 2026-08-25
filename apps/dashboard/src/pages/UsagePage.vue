@@ -1,16 +1,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { store } from "../composables/usePool";
+import { useUsageScope, type UsageDimension } from "../composables/useUsageScope";
 import StatGridSkeleton from "../components/StatGridSkeleton.vue";
 import Skeleton from "../components/Skeleton.vue";
-
-const usage = computed(() => store.usage ?? {});
-const series = computed(() => (usage.value.series as { t: number; tokens: number }[] | undefined) ?? []);
-const max = computed(() => Math.max(1, ...series.value.map((p) => p.tokens)));
-const month = computed(() => (usage.value.month ?? {}) as Record<string, number | undefined>);
-const byAccount = computed(() => (usage.value.byAccount as Rollup[] | undefined) ?? []);
-const byModel = computed(() => (usage.value.byModel as Rollup[] | undefined) ?? []);
-const bySession = computed(() => (usage.value.bySession as Rollup[] | undefined) ?? []);
+import UsageWeekChart from "../components/UsageWeekChart.vue";
+import UsageFilterRow from "../components/UsageFilterRow.vue";
+import { formatMoney, formatTokens } from "../utils/format";
+import type { UsagePoint } from "../utils/chart";
 
 interface Rollup {
   key?: string;
@@ -21,20 +18,22 @@ interface Rollup {
   estimatedCost?: number | null;
 }
 
+const { filters, usage, hasFilter, toggle, clear } = useUsageScope();
+const series = computed(() => (usage.value.series as UsagePoint[] | undefined) ?? []);
+const month = computed(() => (usage.value.month ?? {}) as Record<string, number | undefined>);
+const byAccount = computed(() => (usage.value.byAccount as Rollup[] | undefined) ?? []);
+const byModel = computed(() => (usage.value.byModel as Rollup[] | undefined) ?? []);
+const bySession = computed(() => (usage.value.bySession as Rollup[] | undefined) ?? []);
+
+const groups = computed(() => [
+  { title: "By account", dimension: "accountId" as UsageDimension, rows: byAccount.value, name: (row: Rollup) => label(row.key) },
+  { title: "By model", dimension: "model" as UsageDimension, rows: byModel.value, name: (row: Rollup) => row.key ?? "—" },
+  { title: "By session", dimension: "sessionId" as UsageDimension, rows: bySession.value, name: (row: Rollup) => row.key ?? "—" },
+]);
+
 function label(id?: string) {
   if (!id) return "—";
   return store.accounts.find((a) => a.id === id)?.label ?? id;
-}
-
-function money(n?: number | null) {
-  return n === undefined || n === null ? "—" : `~$${Number(n).toFixed(2)}`;
-}
-
-function tokens(n?: number) {
-  const v = n ?? 0;
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1000) return `${(v / 1000).toFixed(1)}k`;
-  return String(v);
 }
 </script>
 
@@ -70,41 +69,46 @@ function tokens(n?: number) {
         </div>
       </section>
       <p class="font-mono text-[11px] text-mist">
-        Cache read {{ tokens(month.cacheReadTokens) }} · Uncached input {{ tokens(month.inputTokens) }}
-        <span v-if="usage.consumed"> · Estimated inference {{ money(usage.consumed as number) }}</span>
+        Cache read {{ formatTokens(month.cacheReadTokens) }} · Uncached input {{ formatTokens(month.inputTokens) }}
+        <span v-if="usage.consumed"> · Estimated inference {{ formatMoney(usage.consumed as number) }}</span>
       </p>
       <p v-if="usage.subsidy" class="font-mono text-[11px] text-mist">
         Subsidy uses configured subscription cost and measured consumption. Monetary values are estimates unless marked exact.
       </p>
       <section class="border border-line bg-panel p-3">
-        <p class="mb-3 font-mono text-[11px] uppercase tracking-wider text-mist">Tokens this week</p>
-        <div class="flex h-32 items-end gap-px">
-          <div
-            v-for="point in series"
-            :key="point.t"
-            class="flex-1 bg-amber/80"
-            :style="{ height: `${(point.tokens / max) * 100}%` }"
-            :title="new Date(point.t).toISOString()"
-          />
+        <div class="mb-3 flex items-baseline justify-between gap-3">
+          <p class="font-mono text-[11px] uppercase tracking-wider text-mist">Tokens this week</p>
+          <button
+            v-if="hasFilter"
+            class="font-mono text-[11px] text-mist hover:text-amber"
+            type="button"
+            @click="clear"
+          >
+            Clear filters
+          </button>
         </div>
+        <UsageWeekChart :series="series" />
       </section>
       <section class="grid gap-4 md:grid-cols-3">
-        <div v-for="group in [
-          { title: 'By account', rows: byAccount, name: (r: Rollup) => label(r.key) },
-          { title: 'By model', rows: byModel, name: (r: Rollup) => r.key ?? '—' },
-          { title: 'By session', rows: bySession, name: (r: Rollup) => r.key ?? '—' },
-        ]" :key="group.title">
+        <div v-for="group in groups" :key="group.title">
           <h2 class="mb-2 text-sm">{{ group.title }}</h2>
-          <ol class="space-y-1 font-mono text-[11px]">
-            <li v-for="row in group.rows" :key="String(row.key)" class="flex justify-between border-b border-line/60 py-1">
-              <span class="truncate pr-2">{{ group.name(row) }}</span>
-              <span class="text-mist">{{ row.requests ?? 0 }} · {{ money(row.estimatedCost) }}</span>
-            </li>
-            <li v-if="group.rows.length === 0" class="text-mist">No usage yet.</li>
+          <ol class="space-y-1">
+            <UsageFilterRow
+              v-for="row in group.rows"
+              :key="String(row.key)"
+              :name="group.name(row)"
+              :selected="filters[group.dimension] === row.key"
+              :requests="row.requests"
+              :input-tokens="row.inputTokens"
+              :cache-read-tokens="row.cacheReadTokens"
+              :output-tokens="row.outputTokens"
+              :estimated-cost="row.estimatedCost"
+              @click="toggle(group.dimension, row.key)"
+            />
+            <li v-if="group.rows.length === 0" class="font-mono text-[11px] text-mist">No usage yet.</li>
           </ol>
         </div>
       </section>
     </template>
   </div>
 </template>
-
