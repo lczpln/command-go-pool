@@ -155,7 +155,7 @@ npm run demo
 npm run dev
 ```
 
-Architecture: `docs/architecture.md`. Research: `docs/research.md`. Troubleshooting: `docs/troubleshooting.md`.
+Architecture: `docs/architecture.md`. Research: `docs/research.md`. Troubleshooting: `docs/troubleshooting.md`. Publishing to npm (`npx command-go-pool`): `docs/publish.md`.
 
 ## License
 
