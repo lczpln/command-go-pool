@@ -16,10 +16,9 @@ jobs:
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@11
       - run: npm ci
       - run: npm test
       - run: npm run build
       - run: npm run pack:check
       - run: npm publish --access public --provenance --ignore-scripts
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

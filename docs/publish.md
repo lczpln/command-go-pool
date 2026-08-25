@@ -16,11 +16,21 @@ The published tarball is what npx installs. It must contain:
 ## One-time npm setup
 
 1. Create an [npmjs.com](https://www.npmjs.com) account and enable 2FA.
-2. Create a **granular access token** (Automation): permission to publish `command-go-pool`, bypass 2FA on CI.
-3. In the GitHub repo: **Settings → Secrets and variables → Actions → New repository secret**
-   - Name: `NPM_TOKEN`
-   - Value: the token
-4. Optional: on the npm package page after the first publish, add a **Trusted Publisher** for GitHub Actions (`lczpln/command-go-pool`, workflow `publish.yml`) so later releases can use OIDC provenance without a long-lived token.
+2. Publish once (from a machine after `npm login`, or with a short-lived token) so the package exists.
+3. On the npm package page → **Publishing access** → **Trusted Publisher**, add GitHub Actions:
+
+   | Field | Value |
+   | --- | --- |
+   | Publisher | GitHub Actions |
+   | Organization or user | `lczpln` |
+   | Repository | `command-go-pool` |
+   | Workflow filename | `publish.yml` |
+   | Environment name | *(leave empty — the workflow does not use a GitHub environment)* |
+   | Allowed actions | Allow `npm publish` only |
+
+4. After the connection is saved, later releases on `v*` tags publish with OIDC. No `NPM_TOKEN` is required.
+
+Do not fill **Environment name** unless `.github/workflows/publish.yml` also has a matching `environment:` field. A mismatch fails publish with `ENEEDAUTH`.
 
 ## First publish
 
@@ -36,7 +46,7 @@ npm publish --access public
 
 ### From GitHub (recommended)
 
-`package.json` is already `0.1.0`. After `NPM_TOKEN` is set:
+`package.json` is already `0.1.0`. After the Trusted Publisher is set:
 
 ```bash
 git tag v0.1.0
