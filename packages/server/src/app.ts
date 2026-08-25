@@ -376,7 +376,13 @@ export async function buildApp(runtime: Runtime) {
       patch.enabled = body.enabled;
       patch.status = body.enabled ? "available" : "disabled";
     }
-    if (body.monthlySubscriptionCost !== undefined) patch.monthlySubscriptionCost = body.monthlySubscriptionCost;
+    if (body.monthlySubscriptionCost !== undefined) {
+      const cost = Number(body.monthlySubscriptionCost);
+      if (!Number.isFinite(cost) || cost < 0) {
+        return reply.code(400).send({ error: "monthlySubscriptionCost must be a non-negative number" });
+      }
+      patch.monthlySubscriptionCost = cost;
+    }
     if (typeof body.credential === "string" && body.credential.trim()) {
       runtime.pool.replaceCredential(id, body.credential.trim());
       const cred = runtime.pool.credential(id);

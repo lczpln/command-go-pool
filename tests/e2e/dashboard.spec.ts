@@ -59,6 +59,36 @@ test.describe("dashboard", () => {
     await expect(row.getByText("ENABLED")).toBeVisible();
   });
 
+  test("updates an account monthly subscription cost from inspect", async ({ page }) => {
+    await page.goto("/accounts");
+    const card = page.locator("article").filter({ hasText: "GO #04" });
+    await card.getByRole("link", { name: "Inspect" }).click();
+    const input = page.getByLabel("GO #04 monthly subscription cost");
+    await expect(input).toBeVisible();
+    const current = Number((await input.inputValue()) || 0);
+    const next = String(current === 20 ? 21 : 20);
+    const saved = page.waitForResponse(
+      (res) => res.request().method() === "PATCH" && res.url().includes("/api/accounts/") && res.ok(),
+    );
+    await input.fill(next);
+    await input.blur();
+    await saved;
+    await expect(input).toHaveValue(next);
+    await page.goto("/accounts");
+    await expect(card.getByText(`$${next}/mo`)).toBeVisible();
+  });
+
+  test("account models stay collapsed until the accordion is opened", async ({ page }) => {
+    await page.goto("/accounts");
+    await page.locator("article").filter({ hasText: "GO #01" }).getByRole("link", { name: "Inspect" }).click();
+    const toggle = page.getByRole("button", { name: /MODELS ·/ });
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByRole("button", { name: "deepseek/deepseek-v4-flash", exact: true })).toHaveCount(0);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByRole("button", { name: "deepseek/deepseek-v4-flash", exact: true })).toBeVisible();
+  });
+
   test("adds and removes a Command Code account from the web form", async ({ page }) => {
     await page.goto("/accounts");
     await expect(page.getByText("COMMISSION ACCOUNT")).toBeVisible();

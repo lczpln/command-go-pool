@@ -29,7 +29,7 @@ Same auth rules. Never includes credential material.
 | --- | --- | --- |
 | GET | `/api/health` |
 | GET/POST | `/api/accounts` | POST body: `{ label, credential, monthlySubscriptionCost? }`. Response never includes the secret. |
-| PATCH/DELETE | `/api/accounts/:id` | PATCH may include `credential` to rotate the stored key. |
+| PATCH/DELETE | `/api/accounts/:id` | PATCH may include `credential` to rotate the stored key, or `monthlySubscriptionCost` to change the seat price used for subsidy math. |
 | POST | `/api/accounts/:id/test` |
 | GET | `/api/models` | Pool catalog: `{ id, enabled, accountIds[], aliasOf? }` |
 | PATCH | `/api/models` | Body `{ id, enabled }`. Persists `config.models.disabled`. |

@@ -6,6 +6,7 @@ const props = defineProps<{
   empty?: string;
 }>();
 
+const open = ref(false);
 const copied = ref<string | null>(null);
 let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -35,8 +36,17 @@ function tone(id: string) {
     {{ props.empty ?? "Models refresh on next health tick" }}
   </p>
   <section v-else>
-    <p class="mb-2 font-mono text-[11px] tracking-[0.28em] text-mist">MODELS · {{ props.models.length }}</p>
-    <ul class="flex flex-wrap gap-1.5">
+    <button
+      type="button"
+      class="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.28em] text-mist hover:text-paper"
+      :aria-expanded="open"
+      aria-controls="account-models"
+      @click="open = !open"
+    >
+      <span class="inline-block text-[10px] leading-none transition-transform duration-150" :class="open ? 'rotate-90' : ''" aria-hidden="true">▸</span>
+      MODELS · {{ props.models.length }}
+    </button>
+    <ul v-if="open" id="account-models" class="mt-2 flex flex-wrap gap-1.5">
       <li v-for="id in props.models" :key="id">
         <button
           type="button"

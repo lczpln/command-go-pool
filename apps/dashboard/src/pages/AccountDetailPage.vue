@@ -5,6 +5,7 @@ import { store, patchAccount } from "../composables/usePool";
 import QuotaBar from "../components/QuotaBar.vue";
 import StatusPill from "../components/StatusPill.vue";
 import ModelBadges from "../components/ModelBadges.vue";
+import AccountCostField from "../components/AccountCostField.vue";
 import Skeleton from "../components/Skeleton.vue";
 
 const route = useRoute();
@@ -76,6 +77,18 @@ async function rotate() {
       <QuotaBar label="Month" :window="account.quota.monthly" />
     </div>
     <ModelBadges :models="account.models" />
+    <section class="border border-line bg-panel">
+      <header class="border-b border-line px-4 py-3">
+        <p class="font-mono text-[11px] tracking-[0.28em] text-mist">SUBSCRIPTION COST</p>
+        <h2 class="mt-1 text-sm">Monthly seat price used for subsidy math</h2>
+      </header>
+      <div class="px-4 py-4">
+        <AccountCostField :account-id="account.id" :label="account.label" :value="account.monthlySubscriptionCost" />
+      </div>
+      <p class="border-t border-line px-4 py-2 font-mono text-[11px] text-mist">
+        Stored inference cost is unchanged. Paid and subsidy on Usage recompute from this amount.
+      </p>
+    </section>
     <section class="border border-line bg-panel">
       <header class="border-b border-line px-4 py-3">
         <p class="font-mono text-[11px] tracking-[0.28em] text-mist">REPLACE CREDENTIAL</p>

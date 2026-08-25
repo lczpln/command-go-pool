@@ -18,10 +18,13 @@ import Skeleton from "./Skeleton.vue";
     <div class="mt-3 grid grid-cols-2 gap-y-2 md:grid-cols-4">
       <Skeleton v-for="i in 4" :key="i" class="h-2.5 w-16" />
     </div>
-    <footer class="mt-3 flex justify-end gap-2">
-      <Skeleton class="h-5 w-14" />
-      <Skeleton class="h-5 w-14" />
-      <Skeleton class="h-5 w-14" />
+    <footer class="mt-3 flex items-center justify-between gap-2">
+      <Skeleton class="h-5 w-20" />
+      <div class="flex gap-2">
+        <Skeleton class="h-5 w-14" />
+        <Skeleton class="h-5 w-14" />
+        <Skeleton class="h-5 w-14" />
+      </div>
     </footer>
   </article>
 </template>

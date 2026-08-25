@@ -14,6 +14,10 @@ function fmtPct(n?: number) {
 function fmtMoney(n?: number) {
   return n === undefined ? "—" : `~$${n.toFixed(2)}`;
 }
+
+function fmtSeat(n?: number) {
+  return n === undefined ? "—" : `$${n}/mo`;
+}
 </script>
 
 <template>
@@ -40,17 +44,20 @@ function fmtMoney(n?: number) {
       <div>Cache {{ fmtPct(account.stats?.cacheHit) }}</div>
       <div>Today {{ fmtMoney(account.stats?.todayCost) }}</div>
     </dl>
-    <footer class="mt-3 flex items-center justify-end gap-2 font-mono text-[11px]">
-      <RouterLink :to="`/accounts/${account.id}`" class="border border-line px-2 py-0.5 text-paper hover:border-amber">Inspect</RouterLink>
-      <button
-        class="border border-line px-2 py-0.5 text-paper hover:border-amber"
-        @click="account.enabled ? $emit('disable') : $emit('enable')"
-      >
-        {{ account.enabled ? "Disable" : "Enable" }}
-      </button>
-      <button class="border border-line px-2 py-0.5 text-mist hover:border-bad hover:text-bad" @click="$emit('remove')">
-        Remove
-      </button>
+    <footer class="mt-3 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px]">
+      <p class="text-mist">{{ fmtSeat(account.monthlySubscriptionCost) }}</p>
+      <div class="flex items-center gap-2">
+        <RouterLink :to="`/accounts/${account.id}`" class="border border-line px-2 py-0.5 text-paper hover:border-amber">Inspect</RouterLink>
+        <button
+          class="border border-line px-2 py-0.5 text-paper hover:border-amber"
+          @click="account.enabled ? $emit('disable') : $emit('enable')"
+        >
+          {{ account.enabled ? "Disable" : "Enable" }}
+        </button>
+        <button class="border border-line px-2 py-0.5 text-mist hover:border-bad hover:text-bad" @click="$emit('remove')">
+          Remove
+        </button>
+      </div>
     </footer>
   </article>
 </template>

@@ -76,4 +76,42 @@ describe("usage filters", () => {
     expect(scoped.subsidy).toBeCloseTo(7.46);
     await instance.close();
   });
+
+  it("recomputes subsidy after PATCH monthlySubscriptionCost without rewriting consumed", async () => {
+    const instance = await withServer({
+      setup(_transport, add, server) {
+        const alpha = add("Alpha");
+        server.runtime.pool.update(alpha, { monthlySubscriptionCost: 10 });
+        server.runtime.usage.record({ accountId: alpha, estimatedCost: 40 });
+      },
+    });
+    const alpha = instance.runtime.pool.list().find((row) => row.label === "Alpha")?.id;
+    const before = await instance.app.inject({ method: "GET", url: `/api/usage?account=${alpha}` });
+    const beforeBody = before.json() as { paid: number; consumed: number; subsidy: number };
+    expect(beforeBody.paid).toBe(10);
+    expect(beforeBody.consumed).toBeCloseTo(40);
+    expect(beforeBody.subsidy).toBeCloseTo(4);
+
+    const patched = await instance.app.inject({
+      method: "PATCH",
+      url: `/api/accounts/${alpha}`,
+      payload: { monthlySubscriptionCost: 5 },
+    });
+    expect(patched.statusCode).toBe(200);
+    expect((patched.json() as { account: { monthlySubscriptionCost: number } }).account.monthlySubscriptionCost).toBe(5);
+
+    const after = await instance.app.inject({ method: "GET", url: `/api/usage?account=${alpha}` });
+    const afterBody = after.json() as { paid: number; consumed: number; subsidy: number };
+    expect(afterBody.paid).toBe(5);
+    expect(afterBody.consumed).toBeCloseTo(40);
+    expect(afterBody.subsidy).toBeCloseTo(8);
+
+    const rejected = await instance.app.inject({
+      method: "PATCH",
+      url: `/api/accounts/${alpha}`,
+      payload: { monthlySubscriptionCost: -1 },
+    });
+    expect(rejected.statusCode).toBe(400);
+    await instance.close();
+  });
 });
