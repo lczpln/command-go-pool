@@ -96,21 +96,18 @@ export async function buildApp(runtime: Runtime) {
     const isInference = path.startsWith("/v1/");
     const isAdmin = path.startsWith("/api/");
     const isDashboard = !isInference && !isAdmin;
-    const apiKey = runtime.config.server.apiKey;
+    const apiKey = runtime.config.server.apiKey?.trim();
     const exposed = !isLoopbackHost(runtime.config.server.host);
-    if (exposed && !apiKey) {
+    if (!apiKey) {
       return reply.code(403).send({
         error: {
-          message: "Binding outside localhost requires COMMAND_GO_POOL_API_KEY. Admin and inference routes are locked.",
+          message: "Pool API key is missing. Restart the pool to auto-generate one, or set COMMAND_GO_POOL_API_KEY.",
           type: "authentication_error",
         },
       });
     }
     if (!exposed && !isInference) return;
-    if (isDashboard && req.method === "GET" && !exposed) return;
-    if (!apiKey && !exposed) return;
-    if (!apiKey) return;
-    if (isDashboard && req.method === "GET") return;
+    if (isDashboard && (req.method === "GET" || req.method === "HEAD")) return;
     const provided =
       headerMap(req.headers).authorization?.replace(/^Bearer\s+/i, "") ?? headerMap(req.headers)["x-api-key"];
     if (provided !== apiKey) {
@@ -512,9 +509,17 @@ export async function buildApp(runtime: Runtime) {
 
   app.get("/api/config", async () => ({ config: publicConfig(runtime.config) }));
 
-  app.patch("/api/config", async (req) => {
+  app.patch("/api/config", async (req, reply) => {
     const patch = req.body as Record<string, unknown>;
-    const merged = { ...runtime.config, ...patch, server: { ...runtime.config.server, ...((patch.server as object) ?? {}) } };
+    const serverPatch = (patch.server as { apiKey?: unknown } | undefined) ?? {};
+    if ("apiKey" in serverPatch) {
+      const next = typeof serverPatch.apiKey === "string" ? serverPatch.apiKey.trim() : "";
+      if (!next) {
+        return reply.code(400).send({ error: "Pool API key cannot be empty. Rotate it instead." });
+      }
+      serverPatch.apiKey = next;
+    }
+    const merged = { ...runtime.config, ...patch, server: { ...runtime.config.server, ...(patch.server as object | undefined) } };
     Object.assign(runtime.config, merged);
     saveConfig(runtime.config);
     return { config: publicConfig(runtime.config) };

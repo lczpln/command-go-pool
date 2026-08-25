@@ -43,7 +43,7 @@ SQLite stores `credential_ref` only. Secret payload is AES-256-GCM in `secrets.b
 
 ## ADR-7 — Localhost default
 
-Bind `127.0.0.1`. Binding non-loopback requires `COMMAND_GO_POOL_API_KEY` (or config `server.apiKey`) and authenticates **both** inference and admin routes. Dashboard never returns credentials.
+Bind `127.0.0.1`. A pool API key (`cgp_…`) is always generated on first start and required on all `/v1` inference routes. Binding non-loopback also authenticates **admin** routes. Dashboard GET stays open and never returns the stored key.
 
 ## Package graph
 

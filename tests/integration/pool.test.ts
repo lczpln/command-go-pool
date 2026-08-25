@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { parseAppConfig } from "@command-go-pool/shared";
-import { failure } from "@command-go-pool/shared";
 import { MockTransport } from "@command-go-pool/transport-commandcode";
 import { boot } from "@command-go-pool/server";
+import { poolHeaders } from "../helpers.js";
 
 async function withServer(setup: (transport: MockTransport, add: (label: string) => string) => void) {
   const home = mkdtempSync(join(tmpdir(), "cgp-int-"));
@@ -38,6 +38,7 @@ describe("openai integration", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/chat/completions",
+      headers: poolHeaders(instance),
       payload: { model: "deepseek/deepseek-v4-flash", messages: [{ role: "user", content: "hi" }], stream: true },
     });
     expect(res.statusCode).toBe(200);
@@ -59,6 +60,7 @@ describe("openai integration", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/messages",
+      headers: poolHeaders(instance),
       payload: {
         model: "deepseek/deepseek-v4-flash",
         max_tokens: 32,
@@ -86,6 +88,7 @@ describe("openai integration", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/messages",
+      headers: poolHeaders(instance),
       payload: {
         model: "deepseek/deepseek-v4-flash",
         max_tokens: 128,
@@ -114,6 +117,7 @@ describe("openai integration", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/chat/completions",
+      headers: poolHeaders(instance),
       payload: { model: "m", messages: [{ role: "user", content: "x" }] },
     });
     expect(res.statusCode).toBeGreaterThan(0);

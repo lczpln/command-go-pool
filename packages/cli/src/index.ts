@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { input, password, confirm } from "@inquirer/prompts";
-import { POOL_NAME, POOL_VERSION, parseAppConfig } from "@command-go-pool/shared";
-import { AccountRepo, SessionRepo, SecretStore, existsConfig, loadConfig, openDatabase, saveConfig } from "@command-go-pool/storage";
+import { ensurePoolApiKey, POOL_NAME, POOL_VERSION } from "@command-go-pool/shared";
+import { AccountRepo, SessionRepo, SecretStore, loadConfig, openDatabase, saveConfig } from "@command-go-pool/storage";
 import { AccountPool } from "@command-go-pool/account-pool";
 import { HttpAlphaTransport } from "@command-go-pool/transport-commandcode";
 import { boot, overview } from "@command-go-pool/server";
@@ -24,7 +24,6 @@ function poolFromDisk() {
 }
 
 async function cmdStart() {
-  if (!existsConfig()) saveConfig(parseAppConfig({}));
   const instance = await boot();
   await instance.listen();
   const snap = overview(instance.runtime);
@@ -39,6 +38,13 @@ async function cmdStart() {
       models,
     }),
   );
+  if (instance.poolApiKeyGenerated) {
+    console.log("✓ Generated pool API key (copy now; Settings → Rotate if lost)");
+    console.log(`  ${instance.runtime.config.server.apiKey}`);
+    console.log("  Clients send Authorization: Bearer. This is not a Command Code user_ key.\n");
+  } else {
+    console.log("Pool API key is set. Inference requires Authorization: Bearer.\n");
+  }
   if (instance.runtime.pool.list().length === 0) {
     console.log("No Command Code accounts yet.");
     console.log(`Open ${dashboard} → Accounts and paste a Studio API key.\n`);
@@ -60,7 +66,9 @@ function program() {
   });
 
   cli.command("init").description("Create config and optionally add accounts from the CLI").action(async () => {
-    saveConfig(parseAppConfig({}));
+    const config = loadConfig();
+    ensurePoolApiKey(config);
+    saveConfig(config);
     const { db, pool, transport } = poolFromDisk();
     await onboard(pool, transport);
     db.close();
@@ -170,7 +178,9 @@ function program() {
 
   const setup = cli.command("setup").description("Client integrations");
   setup.command("opencode").action(async () => {
-    console.log(await setupOpenCodeFromConfig(loadConfig()));
+    const config = loadConfig();
+    if (ensurePoolApiKey(config)) saveConfig(config);
+    console.log(await setupOpenCodeFromConfig(config));
   });
   setup.command("claude").action(async () => {
     const ok = await confirm({
@@ -181,7 +191,9 @@ function program() {
       console.log("Aborted.");
       return;
     }
-    console.log(setupClaude());
+    const config = loadConfig();
+    if (ensurePoolApiKey(config)) saveConfig(config);
+    console.log(setupClaude(config));
   });
 
   return cli;

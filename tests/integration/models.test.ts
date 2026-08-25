@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { withServer } from "../helpers.js";
+import { withServer, poolHeaders } from "../helpers.js";
 
 describe("model catalog APIs", () => {
   afterEach(() => {
@@ -32,7 +32,7 @@ describe("model catalog APIs", () => {
     });
     expect(disable.statusCode).toBe(200);
 
-    const v1 = await instance.app.inject({ method: "GET", url: "/v1/models" });
+    const v1 = await instance.app.inject({ method: "GET", url: "/v1/models", headers: poolHeaders(instance) });
     const ids = (v1.json() as { data: Array<{ id: string }> }).data.map((row) => row.id);
     expect(ids).toContain("deepseek/deepseek-v4-flash");
     expect(ids).toContain("flash");
@@ -42,6 +42,7 @@ describe("model catalog APIs", () => {
     const chat = await instance.app.inject({
       method: "POST",
       url: "/v1/chat/completions",
+      headers: poolHeaders(instance),
       payload: { model: "deepseek/deepseek-v4-pro", messages: [{ role: "user", content: "hi" }] },
     });
     expect(chat.statusCode).toBe(400);
@@ -50,6 +51,7 @@ describe("model catalog APIs", () => {
     const aliasChat = await instance.app.inject({
       method: "POST",
       url: "/v1/chat/completions",
+      headers: poolHeaders(instance),
       payload: { model: "pro", messages: [{ role: "user", content: "hi" }] },
     });
     expect(aliasChat.statusCode).toBe(400);
@@ -57,6 +59,7 @@ describe("model catalog APIs", () => {
     const anthropic = await instance.app.inject({
       method: "POST",
       url: "/v1/messages",
+      headers: poolHeaders(instance),
       payload: { model: "deepseek/deepseek-v4-pro", max_tokens: 16, messages: [{ role: "user", content: "hi" }] },
     });
     expect(anthropic.statusCode).toBe(400);
@@ -83,9 +86,10 @@ describe("model catalog APIs", () => {
     });
     expect(res.statusCode).toBe(200);
     const written = JSON.parse(readFileSync(file, "utf8")) as {
-      provider: { "command-go-pool": { models: Record<string, { name: string }> } };
+      provider: { "command-go-pool": { models: Record<string, { name: string }>; options?: { apiKey?: string } } };
     };
     expect(written.provider["command-go-pool"].models["deepseek/deepseek-v4-flash"]).toBeTruthy();
+    expect(written.provider["command-go-pool"].options?.apiKey).toBe(instance.runtime.config.server.apiKey);
     await instance.close();
   });
 });

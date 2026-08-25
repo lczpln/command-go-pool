@@ -12,7 +12,11 @@ const instance = await boot({
   home,
   transport,
   config: parseAppConfig({
-    server: { host: "127.0.0.1", port: Number(process.env.COMMAND_GO_POOL_PORT ?? 8787) },
+    server: {
+      host: "127.0.0.1",
+      port: Number(process.env.COMMAND_GO_POOL_PORT ?? 8787),
+      apiKey: process.env.COMMAND_GO_POOL_API_KEY,
+    },
   }),
 });
 
@@ -124,3 +128,6 @@ if (ids[0] && !instance.runtime.sessions.get("ses_demo")) {
 
 await instance.listen();
 console.log(`Demo mock pool http://127.0.0.1:${instance.runtime.config.server.port}`);
+if (instance.poolApiKeyGenerated) {
+  console.log(`Pool API key  ${instance.runtime.config.server.apiKey}`);
+}

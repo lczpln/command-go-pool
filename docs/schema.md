@@ -2,6 +2,8 @@
 
 Default directory: `~/.command-go-pool/` (`COMMAND_GO_POOL_HOME` override). Files: `state.db`, `config.yaml`, `secrets.bin`, `master.key`, `logs/`.
 
+`config.yaml` includes `server.apiKey` (generated on first start, mode `0600`).
+
 Mode `0700` on the directory, `0600` on db/config/secrets.
 
 ## Tables

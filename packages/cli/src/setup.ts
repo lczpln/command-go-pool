@@ -1,20 +1,25 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { fetchPoolModels, writeOpenCodeConfig, type AppConfig } from "@command-go-pool/shared";
+import { clientHost, fetchPoolModels, writeOpenCodeConfig, type AppConfig } from "@command-go-pool/shared";
+
+function clientOrigin(config: AppConfig): string {
+  return `http://${clientHost(config.server.host)}:${config.server.port}`;
+}
 
 export async function setupOpenCode(
   baseUrl = "http://127.0.0.1:8787/v1",
   file = process.env.OPENCODE_CONFIG ?? join(homedir(), ".config/opencode/opencode.json"),
   opts: { fetchImpl?: typeof fetch; apiKey?: string } = {},
 ): Promise<string> {
-  const fetched = await fetchPoolModels(baseUrl, opts.apiKey, opts.fetchImpl);
+  const apiKey = opts.apiKey ?? process.env.COMMAND_GO_POOL_API_KEY;
+  const fetched = await fetchPoolModels(baseUrl, apiKey, opts.fetchImpl);
   const lines = [
     writeOpenCodeConfig({
       baseUrl,
       file,
       models: fetched.models,
-      apiKey: opts.apiKey ?? process.env.COMMAND_GO_POOL_API_KEY,
+      apiKey,
     }),
   ];
   if (fetched.warning) lines.push(fetched.warning);
@@ -25,18 +30,23 @@ export function setupOpenCodeFromConfig(
   config: AppConfig,
   opts: { file?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<string> {
-  const host = config.server.host === "0.0.0.0" || config.server.host === "::" ? "127.0.0.1" : config.server.host;
-  const baseUrl = `http://${host}:${config.server.port}/v1`;
-  return setupOpenCode(baseUrl, opts.file, { fetchImpl: opts.fetchImpl, apiKey: config.server.apiKey });
+  return setupOpenCode(`${clientOrigin(config)}/v1`, opts.file, { fetchImpl: opts.fetchImpl, apiKey: config.server.apiKey });
 }
 
-export function setupClaude(baseUrl = "http://127.0.0.1:8787"): string {
-  const file = join(homedir(), ".command-go-pool/claude-settings.json");
+export function setupClaude(
+  config: AppConfig,
+  file = join(homedir(), ".command-go-pool/claude-settings.json"),
+): string {
+  const baseUrl = clientOrigin(config);
+  const apiKey = config.server.apiKey?.trim() || process.env.COMMAND_GO_POOL_API_KEY;
+  if (!apiKey) {
+    throw new Error("Pool API key is missing. Start the pool once so it can generate one, then re-run setup claude.");
+  }
   mkdirSync(dirname(file), { recursive: true });
   const settings = {
     env: {
       ANTHROPIC_BASE_URL: baseUrl,
-      ANTHROPIC_API_KEY: process.env.COMMAND_GO_POOL_API_KEY ?? "pool-managed",
+      ANTHROPIC_API_KEY: apiKey,
       ANTHROPIC_DEFAULT_SONNET_MODEL: "deepseek/deepseek-v4-pro",
       ANTHROPIC_DEFAULT_OPUS_MODEL: "deepseek/deepseek-v4-pro",
       ANTHROPIC_DEFAULT_HAIKU_MODEL: "deepseek/deepseek-v4-flash",
@@ -55,6 +65,6 @@ export function setupClaude(baseUrl = "http://127.0.0.1:8787"): string {
     "",
     "Manual equivalent:",
     `  ANTHROPIC_BASE_URL=${baseUrl}`,
-    "  ANTHROPIC_API_KEY=<your COMMAND_GO_POOL_API_KEY or pool-managed>",
+    `  ANTHROPIC_API_KEY=${apiKey}`,
   ].join("\n");
 }

@@ -32,7 +32,7 @@ export function writeOpenCodeConfig(opts: WriteOpenCodeOptions): string {
     name: "Command Go Pool",
     options: {
       baseURL: opts.baseUrl,
-      apiKey: opts.apiKey ?? process.env.COMMAND_GO_POOL_API_KEY ?? "pool-managed",
+      apiKey: opts.apiKey ?? process.env.COMMAND_GO_POOL_API_KEY,
     },
     models,
   };
