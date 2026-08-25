@@ -5,7 +5,7 @@ const props = defineProps<{ status: string }>();
 
 const map: Record<string, { label: string; class: string; pulse: boolean }> = {
   available: { label: "AVAILABLE", class: "text-ok", pulse: true },
-  active: { label: "ACTIVE", class: "text-ok", pulse: true },
+  active: { label: "ACTIVE", class: "text-amber", pulse: true },
   cooldown: { label: "COOLDOWN", class: "text-warn", pulse: true },
   quota_exhausted: { label: "COOLDOWN", class: "text-warn", pulse: true },
   auth_error: { label: "AUTH ERROR", class: "text-bad", pulse: true },

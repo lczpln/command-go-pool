@@ -28,6 +28,7 @@ export interface Runtime {
   bus: EventBus;
   startedAt: number;
   inflightGenerates: number;
+  inflightByAccount: Map<string, number>;
   healthAbort?: AbortController;
 }
 
@@ -38,6 +39,20 @@ export function emit(runtime: Runtime, partial: Omit<PoolEvent, "id" | "at">): P
   return stored;
 }
 
+export function emitLive(runtime: Runtime, partial: Omit<PoolEvent, "id" | "at">): void {
+  runtime.bus.emitEvent({ id: 0, at: new Date(), ...partial });
+}
+
+export function syncSessionLoad(runtime: Runtime): void {
+  const ttl = runtime.config.routing.sessionTtlHours * 3600_000;
+  const counts = new Map<string, number>();
+  for (const session of runtime.sessions.listActive(ttl)) {
+    counts.set(session.accountId, (counts.get(session.accountId) ?? 0) + 1);
+  }
+  const generating = [...runtime.inflightByAccount.entries()].filter(([, n]) => n > 0).map(([id]) => id);
+  runtime.pool.applySessionLoad(counts, generating);
+}
+
 export function executeRequest(
   runtime: Runtime,
   request: NormalizedRequest,
@@ -46,8 +61,8 @@ export function executeRequest(
 ): { stream: AsyncIterable<NormalizedChunk>; session: Session; account: Account } {
   const exclude = new Set<string>();
   const first = runtime.router.route(request, headers, exclude);
+  syncSessionLoad(runtime);
   if (first.created) {
-    runtime.pool.bumpSessions(first.account.id, 1);
     emit(runtime, {
       level: "info",
       category: "routing",
@@ -86,7 +101,7 @@ async function* pump(
     let ttft: number | undefined;
     let usage: TokenUsage | undefined;
     let errorChunk: Extract<NormalizedChunk, { type: "error" }> | undefined;
-    beginGenerate(runtime);
+    beginGenerate(runtime, account.id);
     try {
       for await (const chunk of runtime.transport.generate(cred, request, signal)) {
         if (chunk.type === "error") {
@@ -114,7 +129,7 @@ async function* pump(
         },
       };
     } finally {
-      endGenerate(runtime);
+      endGenerate(runtime, account.id);
     }
     if (!errorChunk) return;
     const err = errorChunk.error;
@@ -151,13 +166,31 @@ async function* pump(
   }
 }
 
-export function beginGenerate(runtime: Runtime): void {
+export function beginGenerate(runtime: Runtime, accountId?: string): void {
   runtime.inflightGenerates += 1;
+  if (accountId) {
+    runtime.inflightByAccount.set(accountId, (runtime.inflightByAccount.get(accountId) ?? 0) + 1);
+  }
   runtime.healthAbort?.abort();
+  syncSessionLoad(runtime);
+  if (accountId) {
+    emitLive(runtime, {
+      level: "info",
+      category: "routing",
+      type: "account.updated",
+      payload: { accountId },
+    });
+  }
 }
 
-export function endGenerate(runtime: Runtime): void {
+export function endGenerate(runtime: Runtime, accountId?: string): void {
   runtime.inflightGenerates = Math.max(0, runtime.inflightGenerates - 1);
+  if (accountId) {
+    const next = Math.max(0, (runtime.inflightByAccount.get(accountId) ?? 0) - 1);
+    if (next === 0) runtime.inflightByAccount.delete(accountId);
+    else runtime.inflightByAccount.set(accountId, next);
+  }
+  syncSessionLoad(runtime);
 }
 
 function finishSuccess(
@@ -203,6 +236,7 @@ function finishSuccess(
 }
 
 export function overview(runtime: Runtime) {
+  syncSessionLoad(runtime);
   const accounts = runtime.pool.list();
   const ttl = runtime.config.routing.sessionTtlHours * 3600_000;
   const sessions = runtime.sessions.listActive(ttl);

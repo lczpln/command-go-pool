@@ -123,4 +123,56 @@ describe("openai integration", () => {
     expect(res.statusCode).toBeGreaterThan(0);
     await instance.close();
   });
+
+  it("restores ACTIVE from sticky sessions after the in-memory count is lost", async () => {
+    const instance = await withServer((transport, add) => {
+      const id = add("Go #01");
+      transport.set(id, {
+        chunks: [
+          { type: "text-delta", text: "hello" },
+          { type: "finish", reason: "stop", usage: { inputTokens: 4, outputTokens: 1 } },
+        ],
+      });
+    });
+    const chat = await instance.app.inject({
+      method: "POST",
+      url: "/v1/chat/completions",
+      headers: poolHeaders(instance),
+      payload: { model: "deepseek/deepseek-v4-flash", messages: [{ role: "user", content: "hi" }], stream: true },
+    });
+    expect(chat.statusCode).toBe(200);
+    const id = instance.runtime.pool.list()[0]!.id;
+    instance.runtime.pool.update(id, { activeSessionCount: 0, status: "available" });
+    const listed = await instance.app.inject({ method: "GET", url: "/api/accounts" });
+    const account = (listed.json() as { accounts: Array<{ id: string; status: string; activeSessionCount: number }> }).accounts[0];
+    expect(account?.status).toBe("active");
+    expect(account?.activeSessionCount).toBeGreaterThan(0);
+    await instance.close();
+  });
+
+  it("marks the in-flight account as generating", async () => {
+    const instance = await withServer((transport, add) => {
+      const id = add("Go #01");
+      transport.set(id, {
+        delayMs: 250,
+        chunks: [
+          { type: "text-delta", text: "slow" },
+          { type: "finish", reason: "stop", usage: { outputTokens: 1 } },
+        ],
+      });
+    });
+    const pending = instance.app.inject({
+      method: "POST",
+      url: "/v1/chat/completions",
+      headers: poolHeaders(instance),
+      payload: { model: "deepseek/deepseek-v4-flash", messages: [{ role: "user", content: "hi" }], stream: true },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    const listed = await instance.app.inject({ method: "GET", url: "/api/accounts" });
+    const account = (listed.json() as { accounts: Array<{ status: string; generating?: boolean }> }).accounts[0];
+    expect(account?.generating).toBe(true);
+    expect(account?.status).toBe("active");
+    await pending;
+    await instance.close();
+  });
 });

@@ -17,7 +17,10 @@ function fmtMoney(n?: number) {
 </script>
 
 <template>
-  <article class="border border-line bg-panel px-3 py-3">
+  <article
+    class="border bg-panel px-3 py-3"
+    :class="account.generating ? 'border-amber' : account.status === 'active' ? 'border-amber/50' : 'border-line'"
+  >
     <header class="mb-3 flex items-baseline justify-between gap-3">
       <h3 class="font-mono text-[13px] tracking-wide">{{ account.label }}</h3>
       <StatusPill :status="account.status" />

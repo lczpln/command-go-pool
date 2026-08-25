@@ -53,7 +53,7 @@ export function maybeRecover(account: Account, now = Date.now()): Account | unde
   if (account.cooldownUntil.getTime() > now) return undefined;
   return {
     ...account,
-    status: "available",
+    status: account.activeSessionCount > 0 ? "active" : "available",
     cooldownUntil: undefined,
     cooldownReason: undefined,
     healthScore: Math.min(1, account.healthScore + 0.2),

@@ -1,5 +1,5 @@
 import type { Runtime } from "./runtime.js";
-import { emit } from "./runtime.js";
+import { emit, syncSessionLoad } from "./runtime.js";
 import { modelInventory, type AccountQuota, type QuotaWindow } from "@command-go-pool/shared";
 
 export function createHealthTick(runtime: Runtime): () => Promise<void> {
@@ -32,59 +32,68 @@ export function startHealthMonitor(runtime: Runtime): () => void {
 }
 
 async function runHealthTick(runtime: Runtime, signal: AbortSignal): Promise<void> {
-  const recovered = runtime.pool.recoverExpired();
-  for (const account of recovered) {
-    if (signal.aborted) return;
-    const cred = runtime.pool.credential(account.id);
-    if (!cred) continue;
-    try {
-      const status = await runtime.transport.getAccountStatus(cred, signal);
+  try {
+    const recovered = runtime.pool.recoverExpired();
+    for (const account of recovered) {
       if (signal.aborted) return;
-      const current = runtime.pool.get(account.id);
-      if (!current) continue;
-      runtime.pool.replace({
-        ...current,
-        status: status.authenticated ? "available" : "auth_error",
-        quota: mergeQuota(current.quota, status.quota),
-        ...modelInventory(status.models),
-        recentLatencyMs: status.latencyMs,
-      });
-      emit(runtime, {
-        level: "info",
-        category: "quota",
-        type: "account.recovered",
-        payload: { accountId: account.id, label: account.label },
-      });
-    } catch (error) {
-      if (isAbortError(error) || signal.aborted) return;
-      /* stay in cooldown until next tick */
+      const cred = runtime.pool.credential(account.id);
+      if (!cred) continue;
+      try {
+        const status = await runtime.transport.getAccountStatus(cred, signal);
+        if (signal.aborted) return;
+        const current = runtime.pool.get(account.id);
+        if (!current) continue;
+        runtime.pool.replace({
+          ...current,
+          status: status.authenticated ? "available" : "auth_error",
+          quota: mergeQuota(current.quota, status.quota),
+          ...modelInventory(status.models),
+          recentLatencyMs: status.latencyMs,
+        });
+        emit(runtime, {
+          level: "info",
+          category: "quota",
+          type: "account.recovered",
+          payload: { accountId: account.id, label: account.label },
+        });
+      } catch (error) {
+        if (isAbortError(error) || signal.aborted) return;
+        /* stay in cooldown until next tick */
+      }
     }
-  }
-  for (const account of runtime.pool.list()) {
-    if (signal.aborted) return;
-    if (!account.enabled || account.status === "disabled") continue;
-    const cred = runtime.pool.credential(account.id);
-    if (!cred) continue;
-    try {
-      const status = await runtime.transport.getAccountStatus(cred, signal);
+    for (const account of runtime.pool.list()) {
       if (signal.aborted) return;
-      const current = runtime.pool.get(account.id);
-      if (!current) continue;
-      const nextStatus = !status.authenticated
-        ? "auth_error"
-        : current.status === "auth_error"
-          ? "available"
-          : current.status;
-      runtime.pool.replace({
-        ...current,
-        quota: mergeQuota(current.quota, status.quota),
-        ...modelInventory(status.models),
-        recentLatencyMs: status.latencyMs,
-        status: nextStatus,
-      });
-    } catch (error) {
-      if (isAbortError(error) || signal.aborted) return;
-      runtime.log.warn({ accountId: account.id, err: error }, "quota refresh failed");
+      if (!account.enabled || account.status === "disabled") continue;
+      const cred = runtime.pool.credential(account.id);
+      if (!cred) continue;
+      try {
+        const status = await runtime.transport.getAccountStatus(cred, signal);
+        if (signal.aborted) return;
+        const current = runtime.pool.get(account.id);
+        if (!current) continue;
+        const nextStatus = !status.authenticated
+          ? "auth_error"
+          : current.status === "auth_error"
+            ? "available"
+            : current.status;
+        runtime.pool.replace({
+          ...current,
+          quota: mergeQuota(current.quota, status.quota),
+          ...modelInventory(status.models),
+          recentLatencyMs: status.latencyMs,
+          status: nextStatus,
+        });
+      } catch (error) {
+        if (isAbortError(error) || signal.aborted) return;
+        runtime.log.warn({ accountId: account.id, err: error }, "quota refresh failed");
+      }
+    }
+  } finally {
+    const before = runtime.pool.list().map((a) => `${a.id}:${a.status}:${a.activeSessionCount}`).join();
+    syncSessionLoad(runtime);
+    const after = runtime.pool.list().map((a) => `${a.id}:${a.status}:${a.activeSessionCount}`).join();
+    if (before !== after) {
+      emit(runtime, { level: "info", category: "system", type: "account.updated", payload: { reason: "session-load" } });
     }
   }
 }

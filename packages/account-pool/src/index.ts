@@ -106,6 +106,18 @@ export class AccountPool {
     });
   }
 
+  applySessionLoad(counts: Map<string, number>, generating: Iterable<string> = []): void {
+    const live = new Set(generating);
+    for (const account of this.list()) {
+      const count = counts.get(account.id) ?? 0;
+      const busy = live.has(account.id) || count > 0;
+      const status =
+        account.status === "available" || account.status === "active" ? (busy ? "active" : "available") : account.status;
+      if (account.activeSessionCount === count && account.status === status) continue;
+      this.accounts.set(account.id, { ...account, activeSessionCount: count, status });
+    }
+  }
+
   recoverExpired(now = Date.now()): Account[] {
     const recovered: Account[] = [];
     for (const account of this.list()) {

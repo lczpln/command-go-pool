@@ -16,7 +16,7 @@ import {
 import { type Account, type AppConfig, type CommandCodeTransport, type PoolEvent, type Session } from "@command-go-pool/shared";
 import { buildApp } from "./app.js";
 import { startHealthMonitor } from "./health.js";
-import type { Runtime } from "./runtime.js";
+import { syncSessionLoad, type Runtime } from "./runtime.js";
 
 export interface BootOptions {
   config?: AppConfig;
@@ -72,7 +72,9 @@ export async function boot(options: BootOptions = {}) {
     bus: new EventBus(),
     startedAt: Date.now(),
     inflightGenerates: 0,
+    inflightByAccount: new Map(),
   };
+  syncSessionLoad(runtime);
   const app = await buildApp(runtime);
   let stopHealth: (() => void) | undefined;
   return {
@@ -92,6 +94,6 @@ export async function boot(options: BootOptions = {}) {
 }
 
 export type { Runtime } from "./runtime.js";
-export { overview, beginGenerate, endGenerate } from "./runtime.js";
+export { overview, beginGenerate, endGenerate, syncSessionLoad } from "./runtime.js";
 export { mergeQuota, createHealthTick } from "./health.js";
 export { publicConfig } from "./app.js";

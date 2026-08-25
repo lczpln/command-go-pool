@@ -18,6 +18,7 @@ export interface Account {
   status: string;
   healthScore: number;
   activeSessionCount: number;
+  generating?: boolean;
   monthlySubscriptionCost?: number;
   cooldownUntil?: string;
   cooldownReason?: string;

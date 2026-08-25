@@ -72,6 +72,21 @@ describe("sticky routing", () => {
   });
 });
 
+describe("session load", () => {
+  it("marks accounts with sticky sessions as active without persisting", () => {
+    const { pool } = harness();
+    const acc = pool.add({ label: "Go #01", apiKey: "k" });
+    pool.applySessionLoad(new Map([[acc.id, 2]]));
+    expect(pool.get(acc.id)?.status).toBe("active");
+    expect(pool.get(acc.id)?.activeSessionCount).toBe(2);
+    pool.applySessionLoad(new Map(), [acc.id]);
+    expect(pool.get(acc.id)?.status).toBe("active");
+    expect(pool.get(acc.id)?.activeSessionCount).toBe(0);
+    pool.applySessionLoad(new Map());
+    expect(pool.get(acc.id)?.status).toBe("available");
+  });
+});
+
 describe("state transitions", () => {
   it("cooldown then recover", () => {
     const { pool } = harness();

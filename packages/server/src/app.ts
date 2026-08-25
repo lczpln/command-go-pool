@@ -45,7 +45,7 @@ import {
   type ClientQuota,
 } from "@command-go-pool/quota-engine";
 import { saveConfig } from "@command-go-pool/storage";
-import { emit, executeRequest, overview, type Runtime } from "./runtime.js";
+import { emit, executeRequest, overview, syncSessionLoad, type Runtime } from "./runtime.js";
 import { mergeQuota } from "./health.js";
 
 function headerMap(headers: Record<string, unknown>): Record<string, string | undefined> {
@@ -67,6 +67,7 @@ function presentedApiKeys(headers: Record<string, unknown>): string[] {
 }
 
 async function publicAccount(runtime: Runtime, id: string) {
+  syncSessionLoad(runtime);
   const account = runtime.pool.get(id);
   if (!account) return undefined;
   const { credentialRef: _secret, ...rest } = account;
@@ -77,6 +78,7 @@ async function publicAccount(runtime: Runtime, id: string) {
   const cacheHit = cacheRead + input > 0 ? cacheRead / (cacheRead + input) : undefined;
   return {
     ...rest,
+    generating: (runtime.inflightByAccount.get(id) ?? 0) > 0,
     stats: {
       requests: Number(month?.requests ?? 0),
       cacheHit,
