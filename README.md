@@ -590,6 +590,7 @@ CI (`.github/workflows/ci.yml`) runs install, unit tests, build, and Playwright 
 | [`docs/schema.md`](docs/schema.md) | SQLite tables |
 | [`docs/research.md`](docs/research.md) | Upstream Command Code behavior |
 | [`docs/implementation-plan.md`](docs/implementation-plan.md) | Milestone history |
+| [`docs/publish.md`](docs/publish.md) | npm publish so `npx command-go-pool` works |
 
 ---
 

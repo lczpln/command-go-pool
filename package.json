@@ -14,12 +14,17 @@
   "engines": {
     "node": ">=20"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "tsx packages/cli/src/index.ts",
     "dev:dashboard": "npm run dev -w @command-go-pool/dashboard",
     "build": "rm -rf dist && npm run build:dashboard && npm run build:cli && mkdir -p dist/dashboard && cp -R apps/dashboard/dist/. dist/dashboard/ && chmod +x dist/cli.js",
     "build:cli": "tsup --config tsup.config.ts",
     "build:dashboard": "npm run build -w @command-go-pool/dashboard",
+    "prepack": "npm run build",
+    "pack:check": "node scripts/pack-check.mjs",
     "demo": "tsx examples/demo-mock.ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -36,8 +41,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/lczpln/command-go-pool"
+    "url": "git+https://github.com/lczpln/command-go-pool.git"
   },
+  "bugs": {
+    "url": "https://github.com/lczpln/command-go-pool/issues"
+  },
+  "homepage": "https://github.com/lczpln/command-go-pool#readme",
   "workspaces": [
     "apps/*",
     "packages/*"
