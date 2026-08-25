@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test.describe("dashboard", () => {
   test("overview shows the pool and per-account quota windows", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText("Command Go Pool")).toBeVisible();
+    await expect(page.getByText("Command Go Pool", { exact: true })).toBeVisible();
     await expect(page.getByText("Local inference gateway")).toBeVisible();
     await expect(page.getByText("GO #01")).toBeVisible();
     await expect(page.getByText("GO #10")).toBeVisible();
