@@ -48,4 +48,32 @@ describe("usage filters", () => {
     expect(scoped.byModel.map((row) => row.key)).toEqual(["deepseek/deepseek-v4-flash"]);
     await instance.close();
   });
+
+  it("scopes paid and subsidy to the filtered account", async () => {
+    const instance = await withServer({
+      setup(_transport, add, server) {
+        const alpha = add("Alpha");
+        const beta = add("Beta");
+        server.runtime.pool.update(alpha, { monthlySubscriptionCost: 10 });
+        server.runtime.pool.update(beta, { monthlySubscriptionCost: 5 });
+        server.runtime.usage.record({ accountId: alpha, estimatedCost: 74.6 });
+        server.runtime.usage.record({ accountId: beta, estimatedCost: 10 });
+      },
+    });
+    const accounts = instance.runtime.pool.list();
+    const alpha = accounts.find((row) => row.label === "Alpha")?.id;
+
+    const all = await instance.app.inject({ method: "GET", url: "/api/usage" });
+    const poolUsage = all.json() as { paid: number; consumed: number; subsidy: number };
+    expect(poolUsage.paid).toBe(15);
+    expect(poolUsage.consumed).toBeCloseTo(84.6);
+    expect(poolUsage.subsidy).toBeCloseTo(84.6 / 15);
+
+    const filtered = await instance.app.inject({ method: "GET", url: `/api/usage?account=${alpha}` });
+    const scoped = filtered.json() as { paid: number; consumed: number; subsidy: number };
+    expect(scoped.paid).toBe(10);
+    expect(scoped.consumed).toBeCloseTo(74.6);
+    expect(scoped.subsidy).toBeCloseTo(7.46);
+    await instance.close();
+  });
 });

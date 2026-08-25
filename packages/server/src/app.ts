@@ -452,7 +452,8 @@ export async function buildApp(runtime: Runtime) {
     const week = now - 7 * 86_400_000;
     const month = now - 30 * 86_400_000;
     const accounts = runtime.pool.list();
-    const paid = accounts.reduce((s, a) => s + (a.monthlySubscriptionCost ?? 0), 0);
+    const billed = filter.accountId ? accounts.filter((a) => a.id === filter.accountId) : accounts;
+    const paid = billed.reduce((s, a) => s + (a.monthlySubscriptionCost ?? 0), 0);
     const [today, weekRow, monthRollup, byAccount, byModel, bySession, series] = await Promise.all([
       runtime.usage.rollup(day, undefined, scoped),
       runtime.usage.rollup(week, undefined, scoped),
