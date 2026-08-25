@@ -1,5 +1,5 @@
 export const POOL_NAME = "Command Go Pool";
-export const POOL_VERSION = "0.1.1";
+export const POOL_VERSION = "0.1.2";
 export const DEFAULT_HOST = "127.0.0.1";
 export const DEFAULT_PORT = 8787;
 export const DEFAULT_SESSION_TTL_HOURS = 24;
