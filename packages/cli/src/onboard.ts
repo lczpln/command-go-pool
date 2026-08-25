@@ -1,8 +1,8 @@
 import { input, confirm, password } from "@inquirer/prompts";
 import type { AccountPool } from "@command-go-pool/account-pool";
 import type { CommandCodeTransport } from "@command-go-pool/shared";
-import { parseAppConfig } from "@command-go-pool/shared";
-import { saveConfig } from "@command-go-pool/storage";
+import { ensurePoolApiKey } from "@command-go-pool/shared";
+import { loadConfig, saveConfig } from "@command-go-pool/storage";
 
 export async function onboard(pool: AccountPool, transport: CommandCodeTransport): Promise<boolean> {
   console.log("\nCommand Go Pool\n");
@@ -49,7 +49,9 @@ export async function onboard(pool: AccountPool, transport: CommandCodeTransport
     }
     addMore = await confirm({ message: "Add another account?", default: true });
   }
-  saveConfig(parseAppConfig({}));
+  const config = loadConfig();
+  ensurePoolApiKey(config);
+  saveConfig(config);
   const count = pool.list().length;
   if (count === 0) return false;
   console.log(`\n${count} account${count === 1 ? "" : "s"} configured.\n`);

@@ -33,9 +33,13 @@ If every account still shows Unavailable 5h/weekly bars on the dashboard, client
 
 Reasoning models often emit `reasoning-delta` for several seconds before text. That is upstream behavior. Idle timeout (default 120s) closes a stalled stream.
 
-## Bound to 0.0.0.0 and 403
+## Invalid pool API key
 
-Non-loopback binds require `COMMAND_GO_POOL_API_KEY`. Admin and inference routes then require that key.
+Inference always requires `Authorization: Bearer` with the generated pool key (`cgp_…`). It is not a Command Code `user_…` key. Copy it from the first-start log, `config.yaml`, or Settings → Rotate (rotate invalidates the old key). `setup opencode` and `setup claude` write the saved key for you.
+
+## Bound to 0.0.0.0 and 401/403
+
+Non-loopback binds authenticate admin and inference with the pool API key. Copy the generated `cgp_…` key from first-start logs or `/data/config.yaml`.
 
 ## OpenCode did not pick up the provider
 
@@ -49,4 +53,4 @@ The OpenCode picker does not poll `GET /v1/models`. After toggling models in the
 
 ## Docker data empty after restart
 
-Mount `/data` and set `COMMAND_GO_POOL_HOME=/data`. Also set `COMMAND_GO_POOL_HOST=0.0.0.0` and `COMMAND_GO_POOL_API_KEY`.
+Mount `/data` and set `COMMAND_GO_POOL_HOME=/data`. Bind `0.0.0.0`. The pool API key is generated on first start and printed in the container log (persisted in `/data/config.yaml`). Override with `COMMAND_GO_POOL_API_KEY` if you want a fixed value.

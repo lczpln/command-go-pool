@@ -121,7 +121,7 @@ function selectKey(event: Event) {
       </button>
     </form>
     <p class="border-t border-line px-4 py-2 font-mono text-[11px] text-mist">
-      Clients send this as Authorization: Bearer. Not an upstream Command Code credential. Copy after rotate; this screen never shows a stored key again.
+      Clients send this as Authorization: Bearer. Issued automatically on first start. Not an upstream Command Code credential. Copy after rotate; this screen never shows a stored key again.
     </p>
     <p v-if="message" class="px-4 pb-3 font-mono text-[12px] text-ok">{{ message }}</p>
   </section>

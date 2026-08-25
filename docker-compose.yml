@@ -6,7 +6,7 @@ services:
     environment:
       COMMAND_GO_POOL_HOST: "0.0.0.0"
       COMMAND_GO_POOL_PORT: "8787"
-      COMMAND_GO_POOL_API_KEY: "${COMMAND_GO_POOL_API_KEY:?set a pool API key when exposing Docker}"
+      COMMAND_GO_POOL_API_KEY: "${COMMAND_GO_POOL_API_KEY:-}"
       COMMAND_GO_POOL_MASTER_KEY: "${COMMAND_GO_POOL_MASTER_KEY:-}"
     volumes:
       - command-go-pool:/data

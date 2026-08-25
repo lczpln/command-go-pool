@@ -57,11 +57,14 @@ describe("persistence", () => {
     });
     await first.close();
 
+    const firstKey = first.runtime.config.server.apiKey;
     const second = await boot({
       home,
       transport,
       config: parseAppConfig({ server: { host: "127.0.0.1", port: 0 } }),
     });
+    expect(second.runtime.config.server.apiKey).toBe(firstKey);
+    expect(second.poolApiKeyGenerated).toBe(false);
     const restored = second.runtime.pool.list();
     expect(restored).toHaveLength(1);
     expect(restored[0]?.label).toBe("Go #01");

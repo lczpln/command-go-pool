@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { parseAppConfig, failure } from "@command-go-pool/shared";
 import { MockTransport } from "@command-go-pool/transport-commandcode";
 import { boot } from "@command-go-pool/server";
+import { poolHeaders } from "../helpers.js";
 
 describe("chaos: 10 accounts", () => {
   afterEach(() => {
@@ -40,7 +41,7 @@ describe("chaos: 10 accounts", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/chat/completions",
-      headers: { "x-command-go-session": "ses_8fh2" },
+      headers: poolHeaders(instance, { "x-command-go-session": "ses_8fh2" }),
       payload: { model: "deepseek/deepseek-v4-flash", messages: [{ role: "user", content: "go" }] },
     });
     expect(res.statusCode).toBe(200);

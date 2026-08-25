@@ -77,7 +77,7 @@ Start the pool, then add Command Code keys in the dashboard — not the CLI.
 3. On **Accounts**, paste a Studio API key (`user_…`).
 4. The key is encrypted at rest and never shown again.
 
-Optional: set a local pool key on **Settings** if clients should send `Authorization: Bearer`. Required when binding outside localhost.
+A local pool API key (`cgp_…`) is generated on first start and printed once in the terminal. Clients must send it as `Authorization: Bearer`. Copy it from that log, from `config.yaml`, or rotate a new one on **Settings**. This is not a Command Code `user_…` key.
 
 `command-go-pool init` and `command-go-pool account add` still work if you prefer the terminal.
 
@@ -118,7 +118,7 @@ Creates a default config on first run if none exists, then serves:
 - Inference at `http://<host>:<port>/v1`
 - Dashboard at `http://<host>:<port>`
 
-Press `Ctrl+C` to stop. On startup the CLI prints loaded accounts, available models, and pooled 5h / weekly / monthly quota.
+Press `Ctrl+C` to stop. On startup the CLI prints loaded accounts, available models, pooled 5h / weekly / monthly quota, and (on first start) the generated pool API key.
 
 Host and port come from `~/.command-go-pool/config.yaml` and can be overridden with `COMMAND_GO_POOL_HOST` / `COMMAND_GO_POOL_PORT`.
 
@@ -173,6 +173,7 @@ Health checks for the local install. Exit code `0` if all pass, `1` otherwise.
 | `sqlite` | `state.db` is present |
 | `config` | `config.yaml` is present |
 | `secret store` | `secrets.bin` exists, or no accounts are configured yet |
+| `pool API key` | A pool API key is stored (generated on first start) |
 | `accounts` | At least one account is stored |
 | `auth` | No stored account is stuck in `auth_error` |
 
@@ -183,6 +184,7 @@ Example:
 ✓ sqlite            /home/you/.command-go-pool/state.db
 ✓ config            /home/you/.command-go-pool/config.yaml
 ✓ secret store      /home/you/.command-go-pool/secrets.bin
+✓ pool API key      set
 ✓ accounts          2 configured
 ✓ auth              2 without auth_error
 ```
@@ -277,21 +279,21 @@ Inference responses also carry Anthropic `anthropic-ratelimit-unified-*` headers
 
 ### Auth
 
-On localhost, inference works without a pool key unless you set one.
+Inference (`/v1`) **always** requires the pool API key. It is generated on first start (`cgp_…`) and saved in `config.yaml`. Override with `COMMAND_GO_POOL_API_KEY`.
 
-When `COMMAND_GO_POOL_API_KEY` (or `server.apiKey`) is set — and **always** when binding outside loopback — clients must send:
+Clients must send:
 
 ```http
-Authorization: Bearer <COMMAND_GO_POOL_API_KEY>
+Authorization: Bearer <pool API key>
 ```
 
 or:
 
 ```http
-x-api-key: <COMMAND_GO_POOL_API_KEY>
+x-api-key: <pool API key>
 ```
 
-This is the **pool** key, not a Command Code `user_…` key. Upstream credentials never leave the gateway.
+This is the **pool** key, not a Command Code `user_…` key. Upstream credentials never leave the gateway. Loopback **admin** routes (`/api`) stay open for the dashboard. Binding outside loopback authenticates admin as well.
 
 ### Sticky and routing headers
 
@@ -307,16 +309,20 @@ Session id priority: `X-Command-Go-Session` → OpenAI/Anthropic metadata → `p
 
 ### curl
 
+Set `COMMAND_GO_POOL_API_KEY` to the generated `cgp_…` value (first-start log or `config.yaml`).
+
 List models:
 
 ```bash
-curl -s http://127.0.0.1:8787/v1/models
+curl -s http://127.0.0.1:8787/v1/models \
+  -H "Authorization: Bearer $COMMAND_GO_POOL_API_KEY"
 ```
 
 OpenAI-compatible chat (non-streaming):
 
 ```bash
 curl -s http://127.0.0.1:8787/v1/chat/completions \
+  -H "Authorization: Bearer $COMMAND_GO_POOL_API_KEY" \
   -H "Content-Type: application/json" \
   -H "X-Command-Go-Session: my-coding-session" \
   -d '{
@@ -329,6 +335,7 @@ Streaming:
 
 ```bash
 curl -N http://127.0.0.1:8787/v1/chat/completions \
+  -H "Authorization: Bearer $COMMAND_GO_POOL_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "flash",
@@ -341,19 +348,13 @@ Anthropic-compatible messages:
 
 ```bash
 curl -s http://127.0.0.1:8787/v1/messages \
+  -H "Authorization: Bearer $COMMAND_GO_POOL_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "deepseek/deepseek-v4-pro",
     "max_tokens": 256,
     "messages": [{"role": "user", "content": "Say hello in one sentence."}]
   }'
-```
-
-With a pool API key:
-
-```bash
-curl -s http://127.0.0.1:8787/v1/models \
-  -H "Authorization: Bearer $COMMAND_GO_POOL_API_KEY"
 ```
 
 Model aliases from the default config: `flash` → `deepseek/deepseek-v4-flash`, `pro` → `deepseek/deepseek-v4-pro`, `vision` → `deepseek/deepseek-v4-flash-vision-exp`.
@@ -377,7 +378,7 @@ This command:
 1. Reads `~/.config/opencode/opencode.json` (or `$OPENCODE_CONFIG`)
 2. Writes a timestamped `.bak.<timestamp>` copy if the file exists
 3. Fetches enabled models from `GET /v1/models` (falls back to the three DeepSeek Go models if the pool is down)
-4. Adds provider `command-go-pool` pointing at `http://127.0.0.1:8787/v1`
+4. Adds provider `command-go-pool` pointing at `http://127.0.0.1:8787/v1` with the generated pool API key
 5. Leaves other providers in place
 
 Select **Command Go Pool** in the OpenCode model picker.
@@ -394,19 +395,20 @@ Manual provider (model ids come from the pool):
       "name": "Command Go Pool",
       "options": {
         "baseURL": "http://127.0.0.1:8787/v1",
-        "apiKey": "pool-managed"
+        "apiKey": "cgp_your_generated_key"
       }
     }
   }
 }
 ```
 
-If you set `COMMAND_GO_POOL_API_KEY`, use that value as `apiKey` instead of `pool-managed`.
+Use the generated pool API key (`cgp_…`) as `apiKey`. `setup opencode` writes the saved key for you.
 
 Pool quota for OpenCode and plugins:
 
 ```bash
-curl -s http://127.0.0.1:8787/v1/usage
+curl -s http://127.0.0.1:8787/v1/usage \
+  -H "Authorization: Bearer $COMMAND_GO_POOL_API_KEY"
 ```
 
 Returns `{ usage: { rolling, weekly, monthly } }` with used `percent` and `resetsAt`, matching OpenCode Go. A window Command Code did not report is `{ "status": "unavailable" }`.
@@ -417,7 +419,7 @@ Returns `{ usage: { rolling, weekly, monthly } }` with used `percent` and `reset
 command-go-pool setup claude
 ```
 
-Writes `~/.command-go-pool/claude-settings.json` after confirmation. It only sets `ANTHROPIC_*` for the pool; it does not modify your global Claude environment.
+Writes `~/.command-go-pool/claude-settings.json` after confirmation. It only sets `ANTHROPIC_*` for the pool; it does not modify your global Claude environment. `ANTHROPIC_API_KEY` is the generated pool key (`cgp_…`), not a Command Code credential.
 
 ```bash
 claude --settings ~/.command-go-pool/claude-settings.json
@@ -427,7 +429,7 @@ Manual equivalent:
 
 ```bash
 export ANTHROPIC_BASE_URL=http://127.0.0.1:8787
-export ANTHROPIC_API_KEY="${COMMAND_GO_POOL_API_KEY:-pool-managed}"
+export ANTHROPIC_API_KEY=cgp_your_generated_key
 export ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek/deepseek-v4-pro
 export ANTHROPIC_DEFAULT_OPUS_MODEL=deepseek/deepseek-v4-pro
 export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek/deepseek-v4-flash
@@ -439,7 +441,8 @@ JSON for scripts and statuslines:
 
 ```bash
 curl -s http://127.0.0.1:8787/api/oauth/usage
-curl -s http://127.0.0.1:8787/v1/usage
+curl -s http://127.0.0.1:8787/v1/usage \
+  -H "Authorization: Bearer $COMMAND_GO_POOL_API_KEY"
 ```
 
 More detail: [`docs/claude.md`](docs/claude.md).
@@ -450,7 +453,7 @@ Point Cline, Roo Code, Continue, or any OpenAI SDK at:
 
 ```text
 base URL  http://127.0.0.1:8787/v1
-API key   pool-managed   (or your COMMAND_GO_POOL_API_KEY)
+API key   cgp_your_generated_key
 ```
 
 Do **not** point Go accounts at `https://api.commandcode.ai/provider/v1` for generation. Official Provider API chat is not included on Go (`upgrade_required`). This pool uses an isolated generation adapter instead.
@@ -466,7 +469,7 @@ Example: [`examples/config.yaml`](examples/config.yaml)
 server:
   host: 127.0.0.1
   port: 8787
-  # apiKey: change-me          # or COMMAND_GO_POOL_API_KEY
+  # apiKey is generated on first start (cgp_…). Override with COMMAND_GO_POOL_API_KEY.
 routing:
   mode: sticky                 # sticky | balanced | most-available | round-robin
   sessionTtlHours: 24
@@ -497,15 +500,15 @@ Environment variables override `server.host`, `server.port`, and `server.apiKey`
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `COMMAND_GO_POOL_HOST` | `127.0.0.1` | Bind address. Non-loopback **requires** a pool API key |
+| `COMMAND_GO_POOL_HOST` | `127.0.0.1` | Bind address. Non-loopback also authenticates admin routes |
 | `COMMAND_GO_POOL_PORT` | `8787` | Bind port |
-| `COMMAND_GO_POOL_API_KEY` | unset | Gate inference and admin routes |
+| `COMMAND_GO_POOL_API_KEY` | generated `cgp_…` | Required on `/v1`. Auto-issued on first start; env overrides the saved key |
 | `COMMAND_GO_POOL_MASTER_KEY` | generated `master.key` | AES-256-GCM key for `secrets.bin` |
 | `COMMAND_GO_POOL_HOME` | `~/.command-go-pool` | Data directory (`state.db`, config, secrets, logs) |
 | `COMMAND_GO_POOL_LOG_LEVEL` | `info` | Pino log level |
 | `OPENCODE_CONFIG` | `~/.config/opencode/opencode.json` | Path written by `setup opencode` |
 
-A template lives in [`.env.example`](.env.example). Docker must set `COMMAND_GO_POOL_HOST=0.0.0.0` and `COMMAND_GO_POOL_API_KEY`.
+A template lives in [`.env.example`](.env.example). Docker binds `0.0.0.0`; the pool API key is generated on first start unless you set `COMMAND_GO_POOL_API_KEY`.
 
 ---
 
@@ -524,7 +527,7 @@ Quota UI labels **exact** upstream values vs **estimated** local usage vs **unav
 
 ## Security
 
-- Default bind is `127.0.0.1`. Binding `0.0.0.0` (or any non-loopback host) requires `COMMAND_GO_POOL_API_KEY` and authenticates **both** inference and admin routes.
+- Default bind is `127.0.0.1`. Inference always requires the generated pool API key. Binding `0.0.0.0` (or any non-loopback host) also authenticates **admin** routes.
 - Credentials are encrypted at rest (AES-256-GCM in `secrets.bin`). SQLite stores a `credential_ref` only.
 - Optional OS keychain when the `keytar` native module loads.
 - Admin JSON never includes secrets. The dashboard never returns credentials.
@@ -539,7 +542,7 @@ Default: `~/.command-go-pool/` (`COMMAND_GO_POOL_HOME` override). If an older `~
 
 | File | Contents |
 | --- | --- |
-| `config.yaml` | Bind, routing, aliases, disabled models |
+| `config.yaml` | Bind, routing, aliases, disabled models, generated pool API key |
 | `state.db` | Accounts metadata, sessions, usage, events |
 | `secrets.bin` | Encrypted Command Code keys |
 | `master.key` | Local wrapping key (unless `COMMAND_GO_POOL_MASTER_KEY` is set) |
@@ -551,25 +554,23 @@ Schema: [`docs/schema.md`](docs/schema.md).
 
 ## Docker
 
-The container binds `0.0.0.0`, so a pool API key is **required**. Persist `/data`.
+The container binds `0.0.0.0`. A pool API key is generated on first start, printed in the container log, and persisted in `/data/config.yaml`. Override with `COMMAND_GO_POOL_API_KEY` if you want a fixed value. Persist `/data`.
 
 ```bash
 docker run \
   -p 8787:8787 \
   -e COMMAND_GO_POOL_HOST=0.0.0.0 \
-  -e COMMAND_GO_POOL_API_KEY=change-me \
   -v command-go-pool:/data \
   command-go-pool
 ```
 
-Compose (set `COMMAND_GO_POOL_API_KEY` in the environment first):
+Compose:
 
 ```bash
-export COMMAND_GO_POOL_API_KEY=change-me
 docker compose up --build
 ```
 
-[`docker-compose.yml`](docker-compose.yml) maps port `8787` and a named volume onto `/data`. Inside the image, `COMMAND_GO_POOL_HOME=/data`.
+[`docker-compose.yml`](docker-compose.yml) maps port `8787` and a named volume onto `/data`. Inside the image, `COMMAND_GO_POOL_HOME=/data`. Copy the generated key from `docker compose logs` (first start) or `/data/config.yaml`.
 
 If data looks empty after a restart, the volume was not mounted. See [`docs/troubleshooting.md`](docs/troubleshooting.md).
 

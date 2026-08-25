@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { dataHome, paths } from "@command-go-pool/storage";
+import { dataHome, loadConfig, paths } from "@command-go-pool/storage";
 import type { AccountPool } from "@command-go-pool/account-pool";
 
 export async function doctor(pool: AccountPool): Promise<number> {
@@ -10,6 +10,8 @@ export async function doctor(pool: AccountPool): Promise<number> {
   checks.push({ ok: existsSync(p.db), name: "sqlite", detail: p.db });
   checks.push({ ok: existsSync(p.config), name: "config", detail: p.config });
   checks.push({ ok: existsSync(p.secrets) || pool.list().length === 0, name: "secret store", detail: p.secrets });
+  const keySet = existsSync(p.config) && Boolean(loadConfig(home).server.apiKey?.trim());
+  checks.push({ ok: keySet, name: "pool API key", detail: keySet ? "set" : "missing" });
   const accounts = pool.list();
   checks.push({ ok: accounts.length > 0, name: "accounts", detail: `${accounts.length} configured` });
   const authOk = accounts.filter((a) => a.status !== "auth_error");

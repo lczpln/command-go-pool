@@ -2,7 +2,7 @@
 
 ## Inference (`/v1`)
 
-Auth: if `server.apiKey` or `COMMAND_GO_POOL_API_KEY` is set, require `Authorization: Bearer` or `x-api-key`. Required when bind host is not loopback.
+Auth: a pool API key is always issued on first start (`server.apiKey` / `COMMAND_GO_POOL_API_KEY`, format `cgp_…`). Inference (`/v1`) requires `Authorization: Bearer` or `x-api-key`. Loopback admin (`/api`) stays open for the dashboard. Non-loopback binds authenticate both inference and admin.
 
 | Method | Path | Notes |
 | --- | --- | --- |

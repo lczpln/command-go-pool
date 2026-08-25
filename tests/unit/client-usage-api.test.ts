@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { withServer } from "../helpers.js";
+import { withServer, poolHeaders } from "../helpers.js";
 import type { QuotaWindow } from "@command-go-pool/shared";
 
 const fiveHour: QuotaWindow = {
@@ -30,7 +30,7 @@ describe("client usage API", () => {
         server.runtime.pool.update(id, { quota: { fiveHour, weekly } });
       },
     });
-    const opencode = await instance.app.inject({ method: "GET", url: "/v1/usage" });
+    const opencode = await instance.app.inject({ method: "GET", url: "/v1/usage", headers: poolHeaders(instance) });
     expect(opencode.statusCode).toBe(200);
     expect(opencode.json()).toMatchObject({
       object: "usage",
@@ -64,6 +64,7 @@ describe("client usage API", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/messages",
+      headers: poolHeaders(instance),
       payload: {
         model: "deepseek/deepseek-v4-flash",
         max_tokens: 1,
@@ -87,6 +88,7 @@ describe("client usage API", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/messages",
+      headers: poolHeaders(instance),
       payload: {
         model: "deepseek/deepseek-v4-flash",
         max_tokens: 32,
@@ -107,6 +109,7 @@ describe("client usage API", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/messages",
+      headers: poolHeaders(instance),
       payload: {
         model: "deepseek/deepseek-v4-flash",
         max_tokens: 16,

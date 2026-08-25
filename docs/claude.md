@@ -4,7 +4,7 @@
 command-go-pool setup claude
 ```
 
-Writes `~/.command-go-pool/claude-settings.json` after confirmation. It only sets `ANTHROPIC_*` for the pool and does not modify your global Claude environment.
+Writes `~/.command-go-pool/claude-settings.json` after confirmation. It only sets `ANTHROPIC_*` for the pool and does not modify your global Claude environment. `ANTHROPIC_API_KEY` is the generated pool key (`cgp_…`), not `pool-managed` and not a Command Code `user_…` key.
 
 ```bash
 claude --settings ~/.command-go-pool/claude-settings.json
@@ -39,7 +39,8 @@ JSON for scripts and statuslines (same auth as other `/api` and `/v1` routes):
 
 ```bash
 curl -s http://127.0.0.1:8787/api/oauth/usage
-curl -s http://127.0.0.1:8787/v1/usage
+curl -s http://127.0.0.1:8787/v1/usage \
+  -H "Authorization: Bearer $COMMAND_GO_POOL_API_KEY"
 ```
 
 `/api/oauth/usage` uses Claude Code's OAuth shape (`five_hour.utilization` is 0–100). `/v1/usage` uses the OpenCode Go shape. Both omit invented precision.

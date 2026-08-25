@@ -22,12 +22,13 @@ describe("OpenCode setup", () => {
         status: 200,
         headers: { "content-type": "application/json" },
       });
-    const message = await setupOpenCode("http://127.0.0.1:8787/v1", file, { fetchImpl });
+    const message = await setupOpenCode("http://127.0.0.1:8787/v1", file, { fetchImpl, apiKey: "cgp_test" });
     const written = JSON.parse(readFileSync(file, "utf8")) as {
-      provider: Record<string, { options?: { baseURL?: string }; models?: Record<string, { name: string }> }>;
+      provider: Record<string, { options?: { baseURL?: string; apiKey?: string }; models?: Record<string, { name: string }> }>;
     };
     expect(written.provider.anthropic).toBeTruthy();
     expect(written.provider["command-go-pool"]?.options?.baseURL).toBe("http://127.0.0.1:8787/v1");
+    expect(written.provider["command-go-pool"]?.options?.apiKey).toBe("cgp_test");
     expect(written.provider["command-go-pool"]?.models?.["deepseek/deepseek-v4-flash"]?.name).toBe("DeepSeek V4 Flash");
     expect(message).toContain("Unrelated providers were left untouched");
     expect(message).toContain("Added provider: command-go-pool");
@@ -40,7 +41,7 @@ describe("OpenCode setup", () => {
     const fetchImpl = async () => {
       throw new Error("ECONNREFUSED");
     };
-    const message = await setupOpenCode("http://127.0.0.1:8787/v1", file, { fetchImpl });
+    const message = await setupOpenCode("http://127.0.0.1:8787/v1", file, { fetchImpl, apiKey: "cgp_test" });
     const written = JSON.parse(readFileSync(file, "utf8")) as {
       provider: { "command-go-pool": { models: Record<string, unknown> } };
     };
