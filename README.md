@@ -5,7 +5,7 @@ Local inference gateway that pools **user-owned** Command Code Go subscriptions 
 Clients (OpenCode, Claude Code, Cline, Roo Code, curl) see a single OpenAI- and Anthropic-compatible URL. You see every account, quota window, session, and failover on the dashboard.
 
 ```bash
-npx command-go-pool
+npx command-go-pool@latest
 ```
 
 ```text
@@ -44,7 +44,7 @@ This project does **not** create accounts, purchase plans, scrape browser sessio
 ### npx (no install)
 
 ```bash
-npx command-go-pool
+npx command-go-pool@latest
 ```
 
 ### Global CLI
@@ -72,12 +72,14 @@ During development you can skip the build step with `npm run dev` (see [Developm
 
 Start the pool, then add Command Code keys in the dashboard — not the CLI.
 
-1. Run `command-go-pool` (or `npx command-go-pool`).
+1. Run `command-go-pool` (or `npx command-go-pool@latest`).
 2. Open [http://127.0.0.1:8787](http://127.0.0.1:8787).
 3. On **Accounts**, paste a Studio API key (`user_…`).
 4. The key is encrypted at rest and never shown again.
 
 Optional: generate a local pool key on **Settings** if you want clients to send `Authorization: Bearer`. It is never required. Generating or rotating it updates every connected CLI on the **Clients** page.
+
+On a VPS or any non-loopback bind, set `COMMAND_GO_POOL_DASHBOARD_PASSWORD` before start so the UI asks for a login. See [Dashboard](#dashboard).
 
 `command-go-pool init` and `command-go-pool account add` still work if you prefer the terminal.
 
@@ -122,7 +124,7 @@ Creates a default config on first run if none exists. On an interactive TTY it a
 
 Press `Ctrl+C` to stop. On startup the CLI prints loaded accounts, available models, and pooled 5h / weekly / monthly quota.
 
-Host and port come from `~/.command-go-pool/config.yaml` and can be overridden with `COMMAND_GO_POOL_HOST` / `COMMAND_GO_POOL_PORT`.
+Host and port come from `~/.command-go-pool/config.yaml` and can be overridden with `COMMAND_GO_POOL_HOST` / `COMMAND_GO_POOL_PORT`. Set `COMMAND_GO_POOL_DASHBOARD_PASSWORD` to lock the dashboard.
 
 ### First-run wizard
 
@@ -269,6 +271,15 @@ These write **local client config** that points at the pool. They do not start t
 
 With the pool running, open [http://127.0.0.1:8787](http://127.0.0.1:8787).
 
+On loopback the UI is open. To lock it, set `COMMAND_GO_POOL_DASHBOARD_PASSWORD` and restart:
+
+```bash
+export COMMAND_GO_POOL_DASHBOARD_PASSWORD=change-me
+command-go-pool
+```
+
+Sign in at the UI. The password is env-only — not stored in `config.yaml`, and it cannot be set, changed, or removed from Settings or the CLI. Change or unset the env var and restart. The login cookie does **not** authorize `/v1` inference; that still uses the optional pool API key.
+
 | Page | Purpose |
 | --- | --- |
 | Overview | Pool health, quota bars, live account mix |
@@ -303,7 +314,7 @@ Inference responses also carry Anthropic `anthropic-ratelimit-unified-*` headers
 
 ### Auth
 
-A pool API key is **optional**. Inference and the dashboard work without one, including when bound outside localhost.
+A pool API key is **optional**. Inference works without one, including when bound outside localhost. Lock the dashboard separately with `COMMAND_GO_POOL_DASHBOARD_PASSWORD` (see [Dashboard](#dashboard)). The login cookie does not authorize `/v1`.
 
 If you generate one (`command-go-pool rotate` or Settings), clients must send:
 
