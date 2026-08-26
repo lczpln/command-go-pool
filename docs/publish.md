@@ -50,9 +50,22 @@ Then add the Trusted Publisher on the package page. Later versions go out from G
 
 The `docker` job in `publish.yml` pushes `ghcr.io/lczpln/command-go-pool` with the `GITHUB_TOKEN`. No extra secret is required. The workflow permission `packages: write` is what allows the push.
 
-After the first image lands:
+Image tags come from the root `package.json` `version` (`0.1.6`, `0.1`) plus `latest`. That works on both `v*` tag pushes and a manual run from `master`.
 
-1. Open the package at `https://github.com/users/lczpln/packages/container/package/command-go-pool`.
+### Publish the image without a new npm version
+
+Do not retag `v0.1.6`. That commit predates the Docker job, and npm versions are immutable.
+
+After this workflow is on `master`:
+
+1. GitHub → **Actions** → **publish** → **Run workflow**.
+2. Use workflow from **master**.
+3. Target: **docker** (default). **both** also skips npm when that version is already published.
+4. Wait for `ghcr.io/lczpln/command-go-pool:0.1.6` (and `:latest`, `:0.1`) to appear.
+
+Then make the package public:
+
+1. Open `https://github.com/users/lczpln/packages/container/package/command-go-pool`.
 2. **Package settings → Change visibility → Public** so `docker pull` works without login.
 3. Confirm the package is linked to this repository (OCI `org.opencontainers.image.source` from `docker/metadata-action`).
 
@@ -75,6 +88,8 @@ Do not retag a version that already exists on npm; versions are immutable. GHCR 
 
 `npm version` in this repo is easy to get wrong because of workspaces. Prefer a manual bump + `git tag vX.Y.Z`.
 
+To rebuild GHCR for the current `package.json` version without touching npm, run **Actions → publish** from `master` with target **docker**.
+
 ## Local dry run (no publish)
 
 ```bash
@@ -90,4 +105,10 @@ To install the packed tarball the same way npx would:
 npm run build
 npm pack --ignore-scripts
 npx --yes ./command-go-pool-0.1.0.tgz --help
+```
+
+Image (no push):
+
+```bash
+docker build -t command-go-pool:local .
 ```
