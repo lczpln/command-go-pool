@@ -54,3 +54,5 @@ The OpenCode picker does not poll `GET /v1/models`. After toggling models in the
 ## Docker data empty after restart
 
 Mount `/data` and set `COMMAND_GO_POOL_HOME=/data`. Also set `COMMAND_GO_POOL_HOST=0.0.0.0`. A pool API key is optional.
+
+Published images: `ghcr.io/lczpln/command-go-pool:latest` (see [`docs/publish.md`](publish.md)). If `docker pull` returns `denied` or `not found`, the GHCR package is still private.

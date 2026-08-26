@@ -1,11 +1,11 @@
 FROM node:20-bookworm-slim AS build
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY package.json ./
+COPY package.json package-lock.json ./
 COPY apps ./apps
 COPY packages ./packages
 COPY tsconfig.json tsconfig.base.json tsup.config.ts vitest.config.ts ./
-RUN npm install
+RUN npm ci
 RUN npm run build
 
 FROM node:20-bookworm-slim

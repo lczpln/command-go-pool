@@ -1,5 +1,6 @@
 services:
   pool:
+    image: ghcr.io/lczpln/command-go-pool:latest
     build: .
     ports:
       - "8787:8787"

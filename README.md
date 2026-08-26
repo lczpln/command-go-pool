@@ -54,6 +54,16 @@ npm install -g command-go-pool
 command-go-pool --help
 ```
 
+### Docker
+
+Published images are on GHCR. Tags match npm (`0.1.6`, `latest`).
+
+```bash
+docker pull ghcr.io/lczpln/command-go-pool:latest
+```
+
+See [Docker](#docker) for `docker run` and Compose.
+
 ### From source
 
 ```bash
@@ -587,16 +597,29 @@ Schema: [`docs/schema.md`](docs/schema.md).
 
 The container binds `0.0.0.0`. A pool API key is optional; generate one if you want to lock the endpoint. Set `COMMAND_GO_POOL_DASHBOARD_PASSWORD` to lock the UI. Persist `/data`. Put TLS in front of a public port.
 
+Images are published to GHCR on each `v*` release tag (`linux/amd64` and `linux/arm64`):
+
+```text
+ghcr.io/lczpln/command-go-pool:latest
+ghcr.io/lczpln/command-go-pool:0.1.6
+```
+
 ```bash
 docker run \
   -p 8787:8787 \
   -e COMMAND_GO_POOL_HOST=0.0.0.0 \
   -e COMMAND_GO_POOL_DASHBOARD_PASSWORD=change-me \
   -v command-go-pool:/data \
-  command-go-pool
+  ghcr.io/lczpln/command-go-pool:latest
 ```
 
-Compose:
+Compose (pulls the published image):
+
+```bash
+docker compose up
+```
+
+Build locally instead of pulling:
 
 ```bash
 docker compose up --build
@@ -648,7 +671,7 @@ CI (`.github/workflows/ci.yml`) runs install, unit tests, build, and Playwright 
 | [`docs/schema.md`](docs/schema.md) | SQLite tables |
 | [`docs/research.md`](docs/research.md) | Upstream Command Code behavior |
 | [`docs/implementation-plan.md`](docs/implementation-plan.md) | Milestone history |
-| [`docs/publish.md`](docs/publish.md) | npm publish so `npx command-go-pool` works |
+| [`docs/publish.md`](docs/publish.md) | npm and GHCR publish on `v*` tags |
 
 ---
 

@@ -1,4 +1,4 @@
-# Publish to npm (`npx command-go-pool`)
+# Publish to npm and GHCR
 
 `npx command-go-pool` works once the **root** package is on the public npm registry. Workspace packages under `apps/` and `packages/` stay `private`; tsup bundles them into `dist/cli.js`.
 
@@ -46,6 +46,18 @@ npm publish --access public
 
 Then add the Trusted Publisher on the package page. Later versions go out from GitHub on `v*` tags.
 
+## One-time GHCR setup
+
+The `docker` job in `publish.yml` pushes `ghcr.io/lczpln/command-go-pool` with the `GITHUB_TOKEN`. No extra secret is required. The workflow permission `packages: write` is what allows the push.
+
+After the first image lands:
+
+1. Open the package at `https://github.com/users/lczpln/packages/container/package/command-go-pool`.
+2. **Package settings → Change visibility → Public** so `docker pull` works without login.
+3. Confirm the package is linked to this repository (OCI `org.opencontainers.image.source` from `docker/metadata-action`).
+
+The first GHCR package for a repo is private by default. Leave it private only if you want authenticated pulls.
+
 ## Later releases
 
 1. Bump the root `"version"` and `POOL_VERSION` in `packages/shared/src/constants.ts` to the same value.
@@ -57,7 +69,9 @@ git tag v0.1.1
 git push origin v0.1.1
 ```
 
-Do not retag a version that already exists on npm; versions are immutable.
+That tag runs both jobs: npm (`command-go-pool@0.1.1`) and Docker (`ghcr.io/lczpln/command-go-pool:0.1.1`, `:0.1`, and `:latest`; `linux/amd64` and `linux/arm64`).
+
+Do not retag a version that already exists on npm; versions are immutable. GHCR tags can be overwritten, but treat `:0.1.1` as immutable anyway.
 
 `npm version` in this repo is easy to get wrong because of workspaces. Prefer a manual bump + `git tag vX.Y.Z`.
 
