@@ -2,6 +2,7 @@
 import { RouterLink } from "vue-router";
 import { store } from "../composables/usePool";
 import SessionCardSkeleton from "../components/SessionCardSkeleton.vue";
+import { formatMoney } from "../utils/format";
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -21,7 +22,7 @@ function accountLabel(id: string) {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="min-w-0 space-y-4">
     <h1 class="text-lg">Sessions</h1>
     <div v-if="!store.ready" class="space-y-3" role="status" aria-label="Loading sessions">
       <SessionCardSkeleton v-for="i in 3" :key="i" />
@@ -30,21 +31,21 @@ function accountLabel(id: string) {
       No active sessions.
     </div>
     <template v-else>
-      <RouterLink v-for="session in store.sessions" :key="session.id" :to="`/sessions/${session.id}`" class="block">
-        <article class="border border-line bg-panel p-3 font-mono text-[12px] hover:border-amber">
-          <header class="mb-2 flex justify-between">
-            <span>{{ session.id }}</span>
-            <span class="text-mist">{{ accountLabel(session.accountId) }}</span>
+      <RouterLink v-for="session in store.sessions" :key="session.id" :to="`/sessions/${session.id}`" class="block min-w-0">
+        <article class="min-w-0 border border-line bg-panel p-3 font-mono text-[12px] hover:border-amber">
+          <header class="mb-2 flex min-w-0 flex-col gap-1 sm:flex-row sm:justify-between sm:gap-3">
+            <span class="min-w-0 wrap-anywhere">{{ session.id }}</span>
+            <span class="min-w-0 wrap-anywhere text-mist sm:text-right">{{ accountLabel(session.accountId) }}</span>
           </header>
-          <p class="text-mist">{{ session.model }}</p>
+          <p class="min-w-0 wrap-anywhere text-mist">{{ session.model }}</p>
           <dl class="mt-3 grid grid-cols-2 gap-y-1 md:grid-cols-4">
-            <div><dt class="text-mist">Requests</dt><dd>{{ session.requests }}</dd></div>
-            <div><dt class="text-mist">Input</dt><dd>{{ fmt(session.inputTokens) }}</dd></div>
-            <div><dt class="text-mist">Cache read</dt><dd>{{ fmt(session.cacheReadTokens) }}</dd></div>
-            <div><dt class="text-mist">Cache hit</dt><dd>{{ hit(session) }}</dd></div>
-            <div><dt class="text-mist">Output</dt><dd>{{ fmt(session.outputTokens) }}</dd></div>
-            <div><dt class="text-mist">Migrations</dt><dd>{{ session.migrations }}</dd></div>
-            <div v-if="session.estimatedCost !== undefined"><dt class="text-mist">Usage</dt><dd>~${{ session.estimatedCost.toFixed(3) }}</dd></div>
+            <div class="min-w-0"><dt class="text-mist">Requests</dt><dd>{{ session.requests }}</dd></div>
+            <div class="min-w-0"><dt class="text-mist">Input</dt><dd>{{ fmt(session.inputTokens) }}</dd></div>
+            <div class="min-w-0"><dt class="text-mist">Cache read</dt><dd>{{ fmt(session.cacheReadTokens) }}</dd></div>
+            <div class="min-w-0"><dt class="text-mist">Cache hit</dt><dd>{{ hit(session) }}</dd></div>
+            <div class="min-w-0"><dt class="text-mist">Output</dt><dd>{{ fmt(session.outputTokens) }}</dd></div>
+            <div class="min-w-0"><dt class="text-mist">Migrations</dt><dd>{{ session.migrations }}</dd></div>
+            <div v-if="session.estimatedCost !== undefined" class="min-w-0"><dt class="text-mist">Usage</dt><dd>{{ formatMoney(session.estimatedCost) }}</dd></div>
           </dl>
         </article>
       </RouterLink>

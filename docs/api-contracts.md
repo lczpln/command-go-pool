@@ -2,7 +2,7 @@
 
 ## Inference (`/v1`)
 
-Auth: if `server.apiKey` or `COMMAND_GO_POOL_API_KEY` is set, require `Authorization: Bearer` or `x-api-key`. The key is optional on every bind, including non-loopback.
+Auth: if `server.apiKey` or `COMMAND_GO_POOL_API_KEY` is set, require `Authorization: Bearer` or `x-api-key`. The key is optional on every bind, including non-loopback. A dashboard session cookie does **not** authorize inference.
 
 | Method | Path | Notes |
 | --- | --- | --- |
@@ -23,10 +23,13 @@ Headers:
 
 ## Admin (`/api`)
 
-Same auth rules. Never includes credential material.
+Same pool-key rules as inference when bound off loopback. If `COMMAND_GO_POOL_DASHBOARD_PASSWORD` is set, remaining admin routes require the dashboard session cookie **or** the pool API key. Never includes credential material. `PATCH /api/config` ignores `dashboard.password`.
 
 | Method | Path | Notes |
 | --- | --- | --- |
+| GET | `/api/auth/status` | Public. `{ required, authenticated }`. Never includes the password. |
+| POST | `/api/auth/login` | Public. Body `{ password }`. Sets httpOnly `cgp_dash` cookie. Rate limited. |
+| POST | `/api/auth/logout` | Clears the dashboard cookie. |
 | GET | `/api/health` |
 | GET/POST | `/api/accounts` | POST body: `{ label, credential, monthlySubscriptionCost? }`. Response never includes the secret. |
 | PATCH/DELETE | `/api/accounts/:id` | PATCH may include `credential` to rotate the stored key, or `monthlySubscriptionCost` to change the seat price used for subsidy math. |

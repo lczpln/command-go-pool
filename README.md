@@ -521,12 +521,13 @@ Environment variables override `server.host`, `server.port`, and `server.apiKey`
 | `COMMAND_GO_POOL_HOST` | `127.0.0.1` | Bind address |
 | `COMMAND_GO_POOL_PORT` | `8787` | Bind port |
 | `COMMAND_GO_POOL_API_KEY` | unset | Optional. If set, gate inference (and admin when not on loopback) |
+| `COMMAND_GO_POOL_DASHBOARD_PASSWORD` | unset | Optional. Locks the dashboard. Env only; restart to change. |
 | `COMMAND_GO_POOL_MASTER_KEY` | generated `master.key` | AES-256-GCM key for `secrets.bin` |
 | `COMMAND_GO_POOL_HOME` | `~/.command-go-pool` | Data directory (`state.db`, config, secrets, logs) |
 | `COMMAND_GO_POOL_LOG_LEVEL` | `info` | Pino log level |
 | `OPENCODE_CONFIG` | `~/.config/opencode/opencode.json` | Path written by `setup opencode` |
 
-A template lives in [`.env.example`](.env.example). Docker typically sets `COMMAND_GO_POOL_HOST=0.0.0.0`. A pool API key is optional.
+A template lives in [`.env.example`](.env.example). Docker typically sets `COMMAND_GO_POOL_HOST=0.0.0.0`. A pool API key is optional. Set `COMMAND_GO_POOL_DASHBOARD_PASSWORD` if the dashboard will be reachable from the network.
 
 ---
 
@@ -546,6 +547,7 @@ Quota UI labels **exact** upstream values vs **estimated** local usage vs **unav
 ## Security
 
 - Default bind is `127.0.0.1`. A pool API key is optional on any bind. If you set one, inference requires it; off-loopback admin routes require it too. Generate/rotate updates connected CLIs.
+- `COMMAND_GO_POOL_DASHBOARD_PASSWORD` locks the dashboard (login cookie). It is not stored in `config.yaml` and cannot be changed from the UI or CLI. Use TLS in front of a public bind.
 - Credentials are encrypted at rest (AES-256-GCM in `secrets.bin`). SQLite stores a `credential_ref` only.
 - Optional OS keychain when the `keytar` native module loads.
 - Admin JSON never includes secrets. The dashboard never returns credentials.
@@ -572,12 +574,13 @@ Schema: [`docs/schema.md`](docs/schema.md).
 
 ## Docker
 
-The container binds `0.0.0.0`. A pool API key is optional; generate one if you want to lock the endpoint. Persist `/data`.
+The container binds `0.0.0.0`. A pool API key is optional; generate one if you want to lock the endpoint. Set `COMMAND_GO_POOL_DASHBOARD_PASSWORD` to lock the UI. Persist `/data`. Put TLS in front of a public port.
 
 ```bash
 docker run \
   -p 8787:8787 \
   -e COMMAND_GO_POOL_HOST=0.0.0.0 \
+  -e COMMAND_GO_POOL_DASHBOARD_PASSWORD=change-me \
   -v command-go-pool:/data \
   command-go-pool
 ```
@@ -588,7 +591,7 @@ Compose:
 docker compose up --build
 ```
 
-[`docker-compose.yml`](docker-compose.yml) maps port `8787` and a named volume onto `/data`. Inside the image, `COMMAND_GO_POOL_HOME=/data`. A pool API key is optional; generate one on Settings or with `command-go-pool rotate` if you want to lock the endpoint.
+[`docker-compose.yml`](docker-compose.yml) maps port `8787` and a named volume onto `/data`. Inside the image, `COMMAND_GO_POOL_HOME=/data`. A pool API key is optional; generate one on Settings or with `command-go-pool rotate` if you want to lock the endpoint. Set `COMMAND_GO_POOL_DASHBOARD_PASSWORD` in the environment to lock the dashboard.
 
 If data looks empty after a restart, the volume was not mounted. See [`docs/troubleshooting.md`](docs/troubleshooting.md).
 

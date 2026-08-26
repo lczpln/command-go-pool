@@ -33,5 +33,10 @@ describe("usage formatters", () => {
   it("formats estimated money", () => {
     expect(formatMoney(undefined)).toBe("—");
     expect(formatMoney(1.73)).toBe("~$1.73");
+    expect(formatMoney(0.04)).toBe("~$0.04");
+    expect(formatMoney(0.0012)).toBe("~$0.0012");
+    expect(formatMoney(0.00004)).toBe("~$0.00004");
+    expect(formatMoney(4e-8)).toBe("~$0.00000004");
+    expect(formatMoney(0)).toBe("~$0");
   });
 });

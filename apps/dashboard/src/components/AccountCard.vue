@@ -3,16 +3,13 @@ import { RouterLink } from "vue-router";
 import QuotaBar from "./QuotaBar.vue";
 import StatusPill from "./StatusPill.vue";
 import type { Account } from "../composables/usePool";
+import { formatMoney } from "../utils/format";
 
 const props = defineProps<{ account: Account }>();
 defineEmits<{ disable: []; enable: []; remove: [] }>();
 
 function fmtPct(n?: number) {
   return n === undefined ? "—" : `${(n * 100).toFixed(1)}%`;
-}
-
-function fmtMoney(n?: number) {
-  return n === undefined ? "—" : `~$${n.toFixed(2)}`;
 }
 
 function fmtSeat(n?: number) {
@@ -42,7 +39,7 @@ function fmtSeat(n?: number) {
       <div>Sessions {{ account.activeSessionCount }}</div>
       <div>Requests {{ account.stats?.requests ?? 0 }}</div>
       <div>Cache {{ fmtPct(account.stats?.cacheHit) }}</div>
-      <div>Today {{ fmtMoney(account.stats?.todayCost) }}</div>
+      <div>Today {{ formatMoney(account.stats?.todayCost) }}</div>
     </dl>
     <footer class="mt-3 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px]">
       <p class="text-mist">{{ fmtSeat(account.monthlySubscriptionCost) }}</p>

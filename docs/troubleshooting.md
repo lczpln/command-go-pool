@@ -37,6 +37,10 @@ Reasoning models often emit `reasoning-delta` for several seconds before text. T
 
 A pool API key is optional. If you set one, admin and inference routes then require that key. Generate it on Settings or with `command-go-pool rotate` so connected CLIs pick it up.
 
+To lock the dashboard itself, set `COMMAND_GO_POOL_DASHBOARD_PASSWORD` and restart. Sign in at the UI. Change or remove the password only by changing that env var — not from Settings or the CLI. Put TLS (Caddy/nginx) in front of a public bind; the cookie is `Secure` only on HTTPS.
+
+Forgot the dashboard password: unset or replace `COMMAND_GO_POOL_DASHBOARD_PASSWORD` on the host and restart. There is no in-app recovery.
+
 ## OpenCode did not pick up the provider
 
 `setup opencode` writes `~/.config/opencode/opencode.json` and keeps unrelated providers. If your OpenCode version uses another path, set `OPENCODE_CONFIG`. A `.bak.<timestamp>` copy is created first.

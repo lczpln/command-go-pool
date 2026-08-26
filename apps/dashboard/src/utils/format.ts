@@ -6,7 +6,18 @@ export function formatTokens(n?: number): string {
 }
 
 export function formatMoney(n?: number | null): string {
-  return n === undefined || n === null ? "—" : `~$${Number(n).toFixed(2)}`;
+  if (n === undefined || n === null || !Number.isFinite(Number(n))) return "—";
+  const value = Number(n);
+  if (value === 0) return "~$0";
+  const abs = Math.abs(value);
+  let digits = abs >= 0.01 ? 2 : abs >= 0.0001 ? 4 : 6;
+  let text = value.toFixed(digits);
+  while (Number(text) === 0 && digits < 8) {
+    digits += 1;
+    text = value.toFixed(digits);
+  }
+  if (digits > 2) text = text.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+  return `~$${text}`;
 }
 
 export function formatHour(t: number): string {

@@ -29,6 +29,14 @@ body,
   scrollbar-color: #2a3140 transparent;
 }
 
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 @keyframes status-ping {
   0% {
     transform: scale(1);

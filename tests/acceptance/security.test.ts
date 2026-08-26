@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { withServer, poolHeaders } from "../helpers.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { withServer, poolHeaders, cookieHeader } from "../helpers.js";
 
 function containsSecret(value: unknown, secrets: string[]): boolean {
   const raw = JSON.stringify(value);
@@ -9,6 +11,7 @@ function containsSecret(value: unknown, secrets: string[]): boolean {
 describe("security gates", () => {
   afterEach(() => {
     delete process.env.COMMAND_GO_POOL_HOME;
+    delete process.env.COMMAND_GO_POOL_DASHBOARD_PASSWORD;
   });
 
   it("allows inference and admin routes when bound off loopback without an API key", async () => {
@@ -196,6 +199,93 @@ describe("security gates", () => {
     expect(instance.runtime.config.server.apiKey).toBeUndefined();
     const open = await instance.app.inject({ method: "GET", url: "/v1/models" });
     expect(open.statusCode).toBe(200);
+    await instance.close();
+  });
+
+  it("requires a dashboard cookie when COMMAND_GO_POOL_DASHBOARD_PASSWORD is set", async () => {
+    process.env.COMMAND_GO_POOL_DASHBOARD_PASSWORD = "dash-secret";
+    const instance = await withServer();
+    const status = await instance.app.inject({ method: "GET", url: "/api/auth/status" });
+    expect(status.statusCode).toBe(200);
+    expect(status.json()).toEqual({ required: true, authenticated: false });
+    expect(JSON.stringify(status.json())).not.toContain("dash-secret");
+
+    const denied = await instance.app.inject({ method: "GET", url: "/api/health" });
+    expect(denied.statusCode).toBe(401);
+
+    const wrong = await instance.app.inject({ method: "POST", url: "/api/auth/login", payload: { password: "nope" } });
+    expect(wrong.statusCode).toBe(401);
+
+    const login = await instance.app.inject({ method: "POST", url: "/api/auth/login", payload: { password: "dash-secret" } });
+    expect(login.statusCode).toBe(204);
+    const cookie = cookieHeader(login);
+    expect(cookie).toContain("cgp_dash=");
+
+    const ok = await instance.app.inject({ method: "GET", url: "/api/health", headers: { cookie } });
+    expect(ok.statusCode).toBe(200);
+    expect(JSON.stringify(ok.json())).not.toContain("dash-secret");
+
+    const config = await instance.app.inject({ method: "GET", url: "/api/config", headers: { cookie } });
+    expect(config.statusCode).toBe(200);
+    expect(JSON.stringify(config.json())).not.toContain("dash-secret");
+    expect((config.json() as { config: { dashboard: { password?: string } } }).config.dashboard.password).toBeUndefined();
+    await instance.close();
+  });
+
+  it("does not treat a dashboard cookie as a pool API key", async () => {
+    process.env.COMMAND_GO_POOL_DASHBOARD_PASSWORD = "dash-secret";
+    const instance = await withServer({
+      config: { server: { host: "0.0.0.0", port: 0, apiKey: "pool-secret" } },
+    });
+    const login = await instance.app.inject({ method: "POST", url: "/api/auth/login", payload: { password: "dash-secret" } });
+    const cookie = cookieHeader(login);
+    const v1 = await instance.app.inject({ method: "GET", url: "/v1/models", headers: { cookie } });
+    expect(v1.statusCode).toBe(401);
+    const admin = await instance.app.inject({ method: "GET", url: "/api/health", headers: { cookie } });
+    expect(admin.statusCode).toBe(200);
+    const viaKey = await instance.app.inject({
+      method: "GET",
+      url: "/api/health",
+      headers: { authorization: "Bearer pool-secret" },
+    });
+    expect(viaKey.statusCode).toBe(200);
+    const inference = await instance.app.inject({
+      method: "GET",
+      url: "/v1/models",
+      headers: { authorization: "Bearer pool-secret" },
+    });
+    expect(inference.statusCode).toBe(200);
+    await instance.close();
+  });
+
+  it("ignores dashboard.password on PATCH /api/config", async () => {
+    const instance = await withServer();
+    const patched = await instance.app.inject({
+      method: "PATCH",
+      url: "/api/config",
+      payload: { dashboard: { password: "injected-secret" } },
+    });
+    expect(patched.statusCode).toBe(200);
+    expect(JSON.stringify(patched.json())).not.toContain("injected-secret");
+    const status = await instance.app.inject({ method: "GET", url: "/api/auth/status" });
+    expect(status.json()).toEqual({ required: false, authenticated: true });
+    const health = await instance.app.inject({ method: "GET", url: "/api/health" });
+    expect(health.statusCode).toBe(200);
+    const yaml = readFileSync(join(instance.home, "config.yaml"), "utf8");
+    expect(yaml).not.toContain("injected-secret");
+    expect(yaml).not.toMatch(/password:/);
+    await instance.close();
+  });
+
+  it("rate limits failed dashboard logins", async () => {
+    process.env.COMMAND_GO_POOL_DASHBOARD_PASSWORD = "dash-secret";
+    const instance = await withServer();
+    for (let i = 0; i < 5; i++) {
+      const res = await instance.app.inject({ method: "POST", url: "/api/auth/login", payload: { password: "wrong" } });
+      expect(res.statusCode).toBe(401);
+    }
+    const limited = await instance.app.inject({ method: "POST", url: "/api/auth/login", payload: { password: "wrong" } });
+    expect(limited.statusCode).toBe(429);
     await instance.close();
   });
 });

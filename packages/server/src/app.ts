@@ -34,6 +34,7 @@ import {
   syncConnectedClientKeys,
   syncConnectedClients,
   writeOpenCodeConfig,
+  dashboardPassword,
   type AppConfig,
 } from "@command-go-pool/shared";
 import {
@@ -47,6 +48,18 @@ import {
 import { saveConfig } from "@command-go-pool/storage";
 import { emit, executeRequest, overview, syncSessionLoad, type Runtime } from "./runtime.js";
 import { mergeQuota } from "./health.js";
+import {
+  LOGIN_FAIL_DELAY_MS,
+  LoginLimiter,
+  clearDashboardCookie,
+  dashboardSessionCookie,
+  readCookie,
+  requestIsSecure,
+  safeEqual,
+  signDashboardCookie,
+  sleep,
+  verifyDashboardCookie,
+} from "./dashboard-auth.js";
 
 function headerMap(headers: Record<string, unknown>): Record<string, string | undefined> {
   const out: Record<string, string | undefined> = {};
@@ -115,7 +128,8 @@ function sseHead(quota: ClientQuota): Record<string, string> {
 }
 
 export async function buildApp(runtime: Runtime) {
-  const app = Fastify({ loggerInstance: runtime.log, forceCloseConnections: true });
+  const app = Fastify({ loggerInstance: runtime.log, forceCloseConnections: true, trustProxy: true });
+  const loginLimiter = new LoginLimiter();
   app.addHook("preClose", async () => {
     runtime.shutdown.abort();
   });
@@ -124,15 +138,62 @@ export async function buildApp(runtime: Runtime) {
     const path = req.url.split("?")[0] ?? "";
     const isInference = path.startsWith("/v1/");
     const isAdmin = path.startsWith("/api/");
-    const isDashboard = !isInference && !isAdmin;
+    const isPublicAuth = path === "/api/auth/status" || path === "/api/auth/login" || path === "/api/auth/logout";
     const apiKey = runtime.config.server.apiKey?.trim();
+    const dashPassword = dashboardPassword();
     const exposed = !isLoopbackHost(runtime.config.server.host);
-    if (!apiKey) return;
-    if (!exposed && !isInference) return;
-    if (isDashboard && (req.method === "GET" || req.method === "HEAD")) return;
-    if (!presentedApiKeys(req.headers).includes(apiKey)) {
-      return reply.code(401).send({ error: { message: "Invalid pool API key", type: "authentication_error" } });
+    const hasApiKey = Boolean(apiKey && presentedApiKeys(req.headers).includes(apiKey));
+    const hasDashSession = verifyDashboardCookie(readCookie(req.headers.cookie), dashPassword);
+
+    if (isInference) {
+      if (!apiKey) return;
+      if (!hasApiKey) return reply.code(401).send({ error: { message: "Invalid pool API key", type: "authentication_error" } });
+      return;
     }
+
+    if (!isAdmin) return;
+    if (isPublicAuth) return;
+
+    if (dashPassword) {
+      if (hasDashSession || hasApiKey) return;
+      return reply.code(401).send({ error: { message: "Dashboard authentication required", type: "authentication_error" } });
+    }
+
+    if (!apiKey) return;
+    if (!exposed) return;
+    if (!hasApiKey) return reply.code(401).send({ error: { message: "Invalid pool API key", type: "authentication_error" } });
+  });
+
+  app.get("/api/auth/status", async (req) => {
+    const required = Boolean(dashboardPassword());
+    const authenticated = !required || verifyDashboardCookie(readCookie(req.headers.cookie), dashboardPassword());
+    return { required, authenticated };
+  });
+
+  app.post("/api/auth/login", async (req, reply) => {
+    const password = dashboardPassword();
+    const secure = requestIsSecure(req.protocol, req.headers["x-forwarded-proto"]);
+    if (!password) return reply.code(204).send();
+    const ip = req.ip || "unknown";
+    if (loginLimiter.check(ip) === "limited") {
+      return reply.code(429).send({ error: { message: "Too many login attempts", type: "authentication_error" } });
+    }
+    const body = req.body as { password?: unknown } | undefined;
+    const presented = typeof body?.password === "string" ? body.password : "";
+    if (!safeEqual(presented, password)) {
+      loginLimiter.fail(ip);
+      await sleep(LOGIN_FAIL_DELAY_MS);
+      return reply.code(401).send({ error: { message: "Invalid dashboard password", type: "authentication_error" } });
+    }
+    loginLimiter.succeed(ip);
+    reply.header("set-cookie", dashboardSessionCookie(signDashboardCookie(password), secure));
+    return reply.code(204).send();
+  });
+
+  app.post("/api/auth/logout", async (req, reply) => {
+    const secure = requestIsSecure(req.protocol, req.headers["x-forwarded-proto"]);
+    reply.header("set-cookie", clearDashboardCookie(secure));
+    return reply.code(204).send();
   });
 
   app.get("/api/health", async () => overview(runtime));
@@ -632,11 +693,22 @@ export async function buildApp(runtime: Runtime) {
   app.get("/api/config", async () => ({ config: publicConfig(runtime.config) }));
 
   app.patch("/api/config", async (req) => {
-    const patch = req.body as Record<string, unknown>;
+    const patch = { ...((req.body as Record<string, unknown> | undefined) ?? {}) };
+    if (patch.dashboard && typeof patch.dashboard === "object") {
+      const dashboard = { ...(patch.dashboard as Record<string, unknown>) };
+      delete dashboard.password;
+      patch.dashboard = dashboard;
+    }
     const previousKey = runtime.config.server.apiKey;
-    const merged = { ...runtime.config, ...patch, server: { ...runtime.config.server, ...((patch.server as object) ?? {}) } };
+    const merged = {
+      ...runtime.config,
+      ...patch,
+      server: { ...runtime.config.server, ...((patch.server as object) ?? {}) },
+      dashboard: { ...runtime.config.dashboard, ...((patch.dashboard as object) ?? {}) },
+    };
     if (typeof merged.server.apiKey === "string" && merged.server.apiKey.trim() === "") merged.server.apiKey = undefined;
     Object.assign(runtime.config, merged);
+    delete (runtime.config.dashboard as { password?: string }).password;
     const updated = runtime.config.server.apiKey !== previousKey ? syncConnectedClientKeys(runtime.config) : [];
     saveConfig(runtime.config);
     return { config: publicConfig(runtime.config), updated };
@@ -663,6 +735,7 @@ export async function buildApp(runtime: Runtime) {
 export function publicConfig(config: AppConfig) {
   return {
     ...config,
+    dashboard: { enabled: config.dashboard.enabled },
     server: { ...config.server, apiKey: config.server.apiKey ? "[set]" : undefined },
     fallback: { ...config.fallback, apiKey: config.fallback.apiKey ? "[set]" : undefined },
   };

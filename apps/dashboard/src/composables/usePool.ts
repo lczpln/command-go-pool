@@ -1,4 +1,6 @@
-import { reactive, onMounted, onUnmounted } from "vue";
+import { reactive, watch, onUnmounted, toValue, type MaybeRefOrGetter } from "vue";
+import { auth } from "./useAuth";
+import { router } from "../router";
 
 export interface QuotaWindow {
   used?: number;
@@ -83,6 +85,12 @@ export const store = reactive({
 
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
+  if (res.status === 401) {
+    auth.authenticated = false;
+    if (auth.required && router.currentRoute.value.path !== "/login") {
+      await router.replace({ path: "/login", query: { next: router.currentRoute.value.fullPath } });
+    }
+  }
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string | { message?: string } };
     const message = typeof body.error === "string" ? body.error : body.error?.message ?? `${res.status} ${path}`;
@@ -210,9 +218,16 @@ export async function refreshAll() {
   store.ready = true;
 }
 
-export function useLive() {
+export function useLive(enabled: MaybeRefOrGetter<boolean> = true) {
   let es: EventSource | undefined;
-  onMounted(async () => {
+
+  function stop() {
+    es?.close();
+    es = undefined;
+    store.connected = false;
+  }
+
+  async function start() {
     await refreshAll().catch(() => undefined);
     store.ready = true;
     es = new EventSource("/api/events/stream");
@@ -228,6 +243,15 @@ export function useLive() {
     for (const name of ["account.updated", "account.cooldown", "account.recovered", "session.started", "session.migrated", "session.ended", "usage.updated", "pool.error", "models.updated", "clients.updated", "hello"]) {
       es.addEventListener(name, bump);
     }
-  });
-  onUnmounted(() => es?.close());
+  }
+
+  watch(
+    () => toValue(enabled),
+    (on) => {
+      stop();
+      if (on) void start();
+    },
+    { immediate: true },
+  );
+  onUnmounted(stop);
 }

@@ -32,7 +32,7 @@ function hit(s: { inputTokens: number; cacheReadTokens: number }) {
 </script>
 
 <template>
-  <div v-if="!store.ready" class="space-y-4 font-mono text-[12px]" role="status" aria-label="Loading session">
+  <div v-if="!store.ready" class="min-w-0 space-y-4 font-mono text-[12px]" role="status" aria-label="Loading session">
     <RouterLink to="/sessions" class="text-mist">← Sessions</RouterLink>
     <Skeleton class="h-5 w-40" />
     <dl class="grid grid-cols-2 gap-2 md:grid-cols-3">
@@ -48,12 +48,12 @@ function hit(s: { inputTokens: number; cacheReadTokens: number }) {
       </div>
     </section>
   </div>
-  <div v-else-if="session" class="space-y-4 font-mono text-[12px]">
+  <div v-else-if="session" class="min-w-0 space-y-4 font-mono text-[12px]">
     <RouterLink to="/sessions" class="text-mist">← Sessions</RouterLink>
-    <h1 class="text-lg text-paper">{{ session.id }}</h1>
+    <h1 class="min-w-0 wrap-anywhere text-lg text-paper">{{ session.id }}</h1>
     <dl class="grid grid-cols-2 gap-2 md:grid-cols-3">
-      <div><dt class="text-mist">Account</dt><dd>{{ label(session.accountId) }}</dd></div>
-      <div><dt class="text-mist">Model</dt><dd>{{ session.model }}</dd></div>
+      <div class="min-w-0"><dt class="text-mist">Account</dt><dd class="wrap-anywhere">{{ label(session.accountId) }}</dd></div>
+      <div class="min-w-0"><dt class="text-mist">Model</dt><dd class="wrap-anywhere">{{ session.model }}</dd></div>
       <div><dt class="text-mist">Requests</dt><dd>{{ session.requests }}</dd></div>
       <div><dt class="text-mist">Input</dt><dd>{{ session.inputTokens }}</dd></div>
       <div><dt class="text-mist">Cache read</dt><dd>{{ session.cacheReadTokens }}</dd></div>
@@ -66,7 +66,7 @@ function hit(s: { inputTokens: number; cacheReadTokens: number }) {
         <Skeleton v-for="i in 3" :key="i" class="h-6 w-full" />
       </div>
       <ol v-else-if="bindings.length" class="space-y-1">
-        <li v-for="(bind, i) in bindings" :key="i" class="border-l border-line pl-3">
+        <li v-for="(bind, i) in bindings" :key="i" class="min-w-0 wrap-anywhere border-l border-line pl-3">
           {{ new Date(bind.at).toLocaleTimeString() }} · {{ label(bind.accountId) }}
           <span class="text-mist">{{ bind.reason }}</span>
         </li>

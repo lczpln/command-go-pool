@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { store } from "../composables/usePool";
-import AddAccountForm from "../components/AddAccountForm.vue";
+import { useAuth } from "../composables/useAuth";
 import PoolKeyForm from "../components/PoolKeyForm.vue";
 import Skeleton from "../components/Skeleton.vue";
+
+const auth = useAuth();
 </script>
 
 <template>
   <div class="space-y-4">
     <h1 class="text-lg">Settings</h1>
-    <AddAccountForm />
     <PoolKeyForm />
     <section class="border border-line bg-panel">
       <header class="border-b border-line px-4 py-3">
@@ -22,6 +23,11 @@ import Skeleton from "../components/Skeleton.vue";
     </section>
     <p class="max-w-xl text-sm text-mist">
       Bind is localhost by default. Keys live in the encrypted store and never appear in this payload.
+    </p>
+    <p class="max-w-xl text-sm text-mist">
+      Dashboard lock
+      {{ auth.required ? "is on." : "is off." }}
+      Set or unset COMMAND_GO_POOL_DASHBOARD_PASSWORD and restart — it cannot be changed from this UI.
     </p>
   </div>
 </template>

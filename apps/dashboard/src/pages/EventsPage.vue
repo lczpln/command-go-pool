@@ -43,7 +43,7 @@ function describe(event: (typeof store.events)[number]): string {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="min-w-0 space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-lg">Events</h1>
       <select v-model="filter" class="border border-line bg-ink px-2 py-1 font-mono text-[12px]">
@@ -57,15 +57,15 @@ function describe(event: (typeof store.events)[number]): string {
       </select>
     </div>
     <ol v-if="!store.ready" class="space-y-1" role="status" aria-label="Loading events">
-      <li v-for="i in 8" :key="i" class="grid grid-cols-[6.5rem_1fr] gap-3 border-b border-line/60 py-2">
+      <li v-for="i in 8" :key="i" class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 border-b border-line/60 py-2">
         <Skeleton class="h-3 w-16" />
         <Skeleton class="h-3 w-full max-w-xl" />
       </li>
     </ol>
-    <ol v-else class="space-y-1 font-mono text-[12px]">
-      <li v-for="event in filtered" :key="event.id" class="grid grid-cols-[6.5rem_1fr] gap-3 border-b border-line/60 py-1">
+    <ol v-else class="min-w-0 space-y-1 font-mono text-[12px]">
+      <li v-for="event in filtered" :key="event.id" class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 border-b border-line/60 py-1">
         <time class="text-mist">{{ new Date(event.at).toLocaleTimeString() }}</time>
-        <span :class="event.level === 'error' ? 'text-bad' : event.level === 'warning' ? 'text-warn' : 'text-paper'">
+        <span class="min-w-0 wrap-anywhere" :class="event.level === 'error' ? 'text-bad' : event.level === 'warning' ? 'text-warn' : 'text-paper'">
           {{ describe(event) }}
         </span>
       </li>

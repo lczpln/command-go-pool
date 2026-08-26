@@ -10,6 +10,8 @@ import {
   rotatePoolApiKey,
   isClientId,
   modelInventory,
+  dashboardPassword,
+  isLoopbackHost,
   type ClientId,
 } from "@command-go-pool/shared";
 import { AccountRepo, SessionRepo, SecretStore, existsConfig, loadConfig, openDatabase, saveConfig } from "@command-go-pool/storage";
@@ -54,6 +56,11 @@ async function cmdStart() {
   );
   if (instance.runtime.config.server.apiKey) {
     console.log("Pool API key is set. Inference requires Authorization: Bearer.\n");
+  }
+  if (dashboardPassword()) {
+    console.log("Dashboard password is set. Sign in at the UI. Change it only via COMMAND_GO_POOL_DASHBOARD_PASSWORD.\n");
+  } else if (!isLoopbackHost(instance.runtime.config.server.host)) {
+    console.log("Dashboard is public on this bind. Set COMMAND_GO_POOL_DASHBOARD_PASSWORD to lock the UI.\n");
   }
   if (instance.runtime.pool.list().length === 0) {
     console.log("No Command Code accounts yet.");

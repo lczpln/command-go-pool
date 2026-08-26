@@ -45,6 +45,8 @@ SQLite stores `credential_ref` only. Secret payload is AES-256-GCM in `secrets.b
 
 Bind `127.0.0.1`. A pool API key is optional on any bind. If `COMMAND_GO_POOL_API_KEY` (or config `server.apiKey`) is set, inference requires it; off-loopback also authenticates admin routes. Dashboard never returns credentials. Generating or rotating the key updates connected CLI configs.
 
+`COMMAND_GO_POOL_DASHBOARD_PASSWORD` is the only way to lock the dashboard. It is env-only (not stored in `config.yaml`, not settable from the UI or CLI). When set, `/api/*` (except `/api/auth/login` and `/api/auth/status`) requires the dashboard session cookie or the pool API key. `/v1/*` still uses only the pool API key. Put TLS in front of a public bind.
+
 ## Package graph
 
 ```

@@ -86,6 +86,11 @@ export function applyEnvOverrides(config: AppConfig, env: NodeJS.ProcessEnv = pr
   return next;
 }
 
+export function dashboardPassword(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const value = env.COMMAND_GO_POOL_DASHBOARD_PASSWORD?.trim();
+  return value || undefined;
+}
+
 export function isLoopbackHost(host: string): boolean {
   return host === "127.0.0.1" || host === "localhost" || host === "::1";
 }

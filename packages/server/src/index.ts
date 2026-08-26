@@ -123,3 +123,10 @@ export type { Runtime } from "./runtime.js";
 export { overview, beginGenerate, endGenerate, syncSessionLoad } from "./runtime.js";
 export { mergeQuota, createHealthTick } from "./health.js";
 export { publicConfig } from "./app.js";
+export {
+  DASHBOARD_COOKIE,
+  LoginLimiter,
+  dashboardPassword,
+  signDashboardCookie,
+  verifyDashboardCookie,
+} from "./dashboard-auth.js";

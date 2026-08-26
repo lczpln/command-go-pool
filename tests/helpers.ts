@@ -16,6 +16,12 @@ export function poolHeaders(
   };
 }
 
+export function cookieHeader(res: { headers: Record<string, unknown> }): string {
+  const raw = res.headers["set-cookie"];
+  const list = Array.isArray(raw) ? raw.map(String) : raw ? [String(raw)] : [];
+  return list.map((row) => row.split(";")[0]).join("; ");
+}
+
 export async function withServer(opts?: {
   setup?: (transport: MockTransport, add: (label: string) => string, instance: Awaited<ReturnType<typeof boot>>) => void;
   config?: Record<string, unknown>;

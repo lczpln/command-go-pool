@@ -9,11 +9,14 @@ import UsagePage from "./pages/UsagePage.vue";
 import EventsPage from "./pages/EventsPage.vue";
 import SettingsPage from "./pages/SettingsPage.vue";
 import ClientsPage from "./pages/ClientsPage.vue";
+import LoginPage from "./pages/LoginPage.vue";
+import { auth, fetchAuthStatus } from "./composables/useAuth";
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/", component: OverviewPage },
+    { path: "/login", component: LoginPage },
     { path: "/accounts", component: AccountsPage },
     { path: "/accounts/:id", component: AccountDetailPage },
     { path: "/models", component: ModelsPage },
@@ -24,4 +27,20 @@ export const router = createRouter({
     { path: "/events", component: EventsPage },
     { path: "/settings", component: SettingsPage },
   ],
+});
+
+router.beforeEach(async (to) => {
+  if (!auth.ready) {
+    try {
+      await fetchAuthStatus();
+    } catch {
+      auth.ready = true;
+    }
+  }
+  if (auth.required && !auth.authenticated && to.path !== "/login") {
+    return { path: "/login", query: { next: to.fullPath } };
+  }
+  if (to.path === "/login" && (!auth.required || auth.authenticated)) {
+    return { path: "/" };
+  }
 });
