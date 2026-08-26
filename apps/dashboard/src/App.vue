@@ -34,9 +34,21 @@ const links = [
     <RouterView v-if="loginScreen" />
     <div v-else class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-5 md:flex-row">
       <aside class="md:w-44 md:shrink-0">
-        <img src="/favicon.svg" alt="" width="28" height="28" class="size-7" />
-        <p class="mt-3 font-mono text-[11px] tracking-[0.3em] text-amber">CGP</p>
-        <p class="mt-2 text-sm">Command Go Pool</p>
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <img src="/favicon.svg" alt="" width="28" height="28" class="size-7" />
+            <p class="mt-3 font-mono text-[11px] tracking-[0.3em] text-amber">CGP</p>
+            <p class="mt-2 text-sm">Command Go Pool</p>
+          </div>
+          <button
+            v-if="auth.required"
+            class="mt-1 shrink-0 font-mono text-[12px] text-mist hover:text-paper md:hidden"
+            type="button"
+            @click="signOut"
+          >
+            Log out
+          </button>
+        </div>
         <nav class="mt-6 flex flex-row gap-3 overflow-x-auto md:flex-col md:gap-1">
           <RouterLink
             v-for="link in links"
@@ -50,7 +62,7 @@ const links = [
         </nav>
         <button
           v-if="auth.required"
-          class="mt-6 font-mono text-[12px] text-mist hover:text-paper"
+          class="mt-6 hidden font-mono text-[12px] text-mist hover:text-paper md:block"
           type="button"
           @click="signOut"
         >
