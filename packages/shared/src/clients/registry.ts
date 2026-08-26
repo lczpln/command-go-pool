@@ -26,7 +26,14 @@ export function listClientStatuses(config: AppConfig): ClientStatus[] {
   const connected = config.clients?.connected ?? {};
   return listClientAdapters().map((adapter) => {
     const detected = adapter.detect();
-    return { ...detected, connected: Boolean(connected[adapter.id]) };
+    const file = connected[adapter.id]?.file;
+    const configPath = file ?? detected.configPath;
+    return {
+      ...detected,
+      connected: Boolean(connected[adapter.id]),
+      configPath,
+      howToRun: detected.howToRun ? detected.howToRun.replace(detected.configPath, configPath) : detected.howToRun,
+    };
   });
 }
 

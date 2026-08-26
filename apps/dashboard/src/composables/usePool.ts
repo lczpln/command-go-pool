@@ -146,11 +146,11 @@ export async function rotatePoolApiKey() {
   return result;
 }
 
-export async function connectClient(id: string) {
+export async function connectClient(id: string, file?: string) {
   const result = await json<{ ok: boolean; file: string; message: string; warning?: string }>(`/api/clients/${id}/connect`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({}),
+    body: JSON.stringify(file?.trim() ? { file: file.trim() } : {}),
   });
   await refreshAll();
   return result;

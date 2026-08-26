@@ -29,6 +29,13 @@ describe("client and pool key APIs", () => {
     const written = JSON.parse(readFileSync(file, "utf8")) as { provider: { "command-go-pool": { options: { apiKey: string } } } };
     expect(written.provider["command-go-pool"].options.apiKey).toBe("pool-managed");
 
+    const listedAfter = await instance.app.inject({ method: "GET", url: "/api/clients" });
+    const opencode = (listedAfter.json() as { clients: Array<{ id: string; configPath: string; connected: boolean }> }).clients.find(
+      (row) => row.id === "opencode",
+    );
+    expect(opencode?.connected).toBe(true);
+    expect(opencode?.configPath).toBe(file);
+
     const disconnected = await instance.app.inject({ method: "POST", url: "/api/clients/opencode/disconnect" });
     expect(disconnected.statusCode).toBe(200);
     const after = JSON.parse(readFileSync(file, "utf8")) as { provider: Record<string, unknown> };
