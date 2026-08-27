@@ -56,7 +56,7 @@ command-go-pool --help
 
 ### Docker
 
-Published images are on GHCR. Tags match npm (`0.1.6`, `latest`).
+Published images are on GHCR. Tags match npm (`0.1.7`, `latest`).
 
 ```bash
 docker pull ghcr.io/lczpln/command-go-pool:latest
@@ -601,7 +601,7 @@ Images are published to GHCR on each `v*` release tag (`linux/amd64` and `linux/
 
 ```text
 ghcr.io/lczpln/command-go-pool:latest
-ghcr.io/lczpln/command-go-pool:0.1.6
+ghcr.io/lczpln/command-go-pool:0.1.7
 ```
 
 ```bash
