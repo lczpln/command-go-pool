@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, RouterLink } from "vue-router";
 import { store } from "../composables/usePool";
 import Skeleton from "../components/Skeleton.vue";
+import { formatTokens } from "../utils/format";
 
 const route = useRoute();
 const bindings = ref<{ accountId: string; reason: string | null; at: number }[]>([]);
@@ -36,7 +37,7 @@ function hit(s: { inputTokens: number; cacheReadTokens: number }) {
     <RouterLink to="/sessions" class="text-mist">← Sessions</RouterLink>
     <Skeleton class="h-5 w-40" />
     <dl class="grid grid-cols-2 gap-2 md:grid-cols-3">
-      <div v-for="i in 7" :key="i">
+      <div v-for="i in 8" :key="i">
         <Skeleton class="h-2.5 w-14" />
         <Skeleton class="mt-1 h-3 w-24" />
       </div>
@@ -55,8 +56,9 @@ function hit(s: { inputTokens: number; cacheReadTokens: number }) {
       <div class="min-w-0"><dt class="text-mist">Account</dt><dd class="wrap-anywhere">{{ label(session.accountId) }}</dd></div>
       <div class="min-w-0"><dt class="text-mist">Model</dt><dd class="wrap-anywhere">{{ session.model }}</dd></div>
       <div><dt class="text-mist">Requests</dt><dd>{{ session.requests }}</dd></div>
-      <div><dt class="text-mist">Input</dt><dd>{{ session.inputTokens }}</dd></div>
-      <div><dt class="text-mist">Cache read</dt><dd>{{ session.cacheReadTokens }}</dd></div>
+      <div><dt class="text-mist">Input</dt><dd>{{ formatTokens(session.inputTokens) }}</dd></div>
+      <div><dt class="text-mist">Cache read</dt><dd>{{ formatTokens(session.cacheReadTokens) }}</dd></div>
+      <div><dt class="text-mist">Output</dt><dd>{{ formatTokens(session.outputTokens) }}</dd></div>
       <div><dt class="text-mist">Cache hit</dt><dd>{{ hit(session) }}</dd></div>
       <div><dt class="text-mist">Migrations</dt><dd>{{ session.migrations }}</dd></div>
     </dl>

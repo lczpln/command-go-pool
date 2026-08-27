@@ -16,6 +16,7 @@ describe("usage filters", () => {
           sessionId: "ses_a",
           model: "deepseek/deepseek-v4-flash",
           inputTokens: 100,
+          cacheReadTokens: 40,
           outputTokens: 20,
           estimatedCost: 0.4,
         });
@@ -39,12 +40,15 @@ describe("usage filters", () => {
     const filtered = await instance.app.inject({ method: "GET", url: `/api/usage?account=${alpha}` });
     const scoped = filtered.json() as {
       month: { requests: number; inputTokens: number };
-      series: Array<{ tokens: number; requests: number }>;
+      series: Array<{ tokens: number; requests: number; input: number; cache: number; output: number }>;
       byModel: Array<{ key: string; requests: number }>;
     };
     expect(Number(scoped.month.requests)).toBe(1);
     expect(Number(scoped.month.inputTokens)).toBe(100);
-    expect(scoped.series.reduce((sum, point) => sum + point.tokens, 0)).toBe(120);
+    expect(scoped.series.reduce((sum, point) => sum + point.tokens, 0)).toBe(160);
+    expect(scoped.series.reduce((sum, point) => sum + point.input, 0)).toBe(100);
+    expect(scoped.series.reduce((sum, point) => sum + point.cache, 0)).toBe(40);
+    expect(scoped.series.reduce((sum, point) => sum + point.output, 0)).toBe(20);
     expect(scoped.byModel.map((row) => row.key)).toEqual(["deepseek/deepseek-v4-flash"]);
     await instance.close();
   });

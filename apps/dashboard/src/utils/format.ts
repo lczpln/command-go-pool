@@ -1,8 +1,20 @@
 export function formatTokens(n?: number): string {
-  const v = n ?? 0;
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1000) return `${(v / 1000).toFixed(1)}k`;
-  return String(v);
+  const v = Number(n ?? 0);
+  if (!Number.isFinite(v)) return "0";
+  const sign = v < 0 ? "-" : "";
+  const abs = Math.abs(v);
+  if (abs < 1000) return `${sign}${Math.round(abs)}`;
+
+  const suffixes = ["", "k", "M", "B"] as const;
+  let exp = Math.min(3, Math.floor(Math.log10(abs) / 3));
+  let scaled = abs / 1000 ** exp;
+  let text = scaled.toFixed(2);
+  if (Number(text) >= 1000 && exp < 3) {
+    exp += 1;
+    text = (Number(text) / 1000).toFixed(2);
+  }
+  text = text.replace(/\.?0+$/, "");
+  return `${sign}${text}${suffixes[exp]}`;
 }
 
 export function formatMoney(n?: number | null): string {

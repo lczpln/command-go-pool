@@ -1,6 +1,6 @@
 import type { Account, AccountQuota, PoolEvent, Session } from "@command-go-pool/shared";
 import type { SqliteBridge } from "./sqlite-bridge.js";
-import type { UsageFilter, UsageGroup, UsageRecord, UsageStore } from "./repos.js";
+import type { UsageFilter, UsageGroup, UsageRecord, UsageSeriesPoint, UsageStore } from "./repos.js";
 
 export type SessionBinding = { accountId: string; reason: string | null; at: number };
 
@@ -73,14 +73,8 @@ export class QueuedUsageRepo implements UsageStore {
     return this.bridge.call("usage.rollup", [since, group, filter]) as Promise<Record<string, unknown>[]>;
   }
 
-  series(
-    since: number,
-    bucketMs: number,
-    filter?: UsageFilter,
-  ): Promise<{ t: number; requests: number; tokens: number; cost: number }[]> {
-    return this.bridge.call("usage.series", [since, bucketMs, filter]) as Promise<
-      { t: number; requests: number; tokens: number; cost: number }[]
-    >;
+  series(since: number, bucketMs: number, filter?: UsageFilter): Promise<UsageSeriesPoint[]> {
+    return this.bridge.call("usage.series", [since, bucketMs, filter]) as Promise<UsageSeriesPoint[]>;
   }
 }
 
