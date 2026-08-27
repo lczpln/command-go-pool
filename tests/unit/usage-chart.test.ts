@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pointIndexFromX } from "../../apps/dashboard/src/utils/chart.js";
+import { hasBreakdown, pointIndexFromX, pointTotal } from "../../apps/dashboard/src/utils/chart.js";
 import { formatMoney, formatTokens } from "../../apps/dashboard/src/utils/format.js";
 
 describe("chart pointer", () => {
@@ -22,12 +22,32 @@ describe("chart pointer", () => {
   });
 });
 
+describe("token layers", () => {
+  it("sums cache, uncached input, and output", () => {
+    const point = { t: 0, tokens: 80, cache: 50, input: 30, output: 20 };
+    expect(hasBreakdown(point)).toBe(true);
+    expect(pointTotal(point)).toBe(100);
+  });
+
+  it("falls back to tokens when the breakdown is missing", () => {
+    const point = { t: 0, tokens: 40 };
+    expect(hasBreakdown(point)).toBe(false);
+    expect(pointTotal(point)).toBe(40);
+  });
+});
+
 describe("usage formatters", () => {
   it("shortens token counts", () => {
     expect(formatTokens(0)).toBe("0");
     expect(formatTokens(999)).toBe("999");
-    expect(formatTokens(1200)).toBe("1.2k");
-    expect(formatTokens(1_220_000)).toBe("1.2M");
+    expect(formatTokens(1000)).toBe("1k");
+    expect(formatTokens(10_000)).toBe("10k");
+    expect(formatTokens(10_920)).toBe("10.92k");
+    expect(formatTokens(150_200)).toBe("150.2k");
+    expect(formatTokens(1_000_000)).toBe("1M");
+    expect(formatTokens(1_220_000)).toBe("1.22M");
+    expect(formatTokens(11_100_000)).toBe("11.1M");
+    expect(formatTokens(23_900_000)).toBe("23.9M");
   });
 
   it("formats estimated money", () => {

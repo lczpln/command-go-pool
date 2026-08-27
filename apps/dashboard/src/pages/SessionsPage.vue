@@ -2,13 +2,7 @@
 import { RouterLink } from "vue-router";
 import { store } from "../composables/usePool";
 import SessionCardSkeleton from "../components/SessionCardSkeleton.vue";
-import { formatMoney } from "../utils/format";
-
-function fmt(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return String(n);
-}
+import { formatMoney, formatTokens } from "../utils/format";
 
 function hit(session: { inputTokens: number; cacheReadTokens: number }): string {
   const den = session.inputTokens + session.cacheReadTokens;
@@ -40,10 +34,10 @@ function accountLabel(id: string) {
           <p class="min-w-0 wrap-anywhere text-mist">{{ session.model }}</p>
           <dl class="mt-3 grid grid-cols-2 gap-y-1 md:grid-cols-4">
             <div class="min-w-0"><dt class="text-mist">Requests</dt><dd>{{ session.requests }}</dd></div>
-            <div class="min-w-0"><dt class="text-mist">Input</dt><dd>{{ fmt(session.inputTokens) }}</dd></div>
-            <div class="min-w-0"><dt class="text-mist">Cache read</dt><dd>{{ fmt(session.cacheReadTokens) }}</dd></div>
+            <div class="min-w-0"><dt class="text-mist">Input</dt><dd>{{ formatTokens(session.inputTokens) }}</dd></div>
+            <div class="min-w-0"><dt class="text-mist">Cache read</dt><dd>{{ formatTokens(session.cacheReadTokens) }}</dd></div>
             <div class="min-w-0"><dt class="text-mist">Cache hit</dt><dd>{{ hit(session) }}</dd></div>
-            <div class="min-w-0"><dt class="text-mist">Output</dt><dd>{{ fmt(session.outputTokens) }}</dd></div>
+            <div class="min-w-0"><dt class="text-mist">Output</dt><dd>{{ formatTokens(session.outputTokens) }}</dd></div>
             <div class="min-w-0"><dt class="text-mist">Migrations</dt><dd>{{ session.migrations }}</dd></div>
             <div v-if="session.estimatedCost !== undefined" class="min-w-0"><dt class="text-mist">Usage</dt><dd>{{ formatMoney(session.estimatedCost) }}</dd></div>
           </dl>

@@ -243,14 +243,20 @@ export type UsageRecord = {
   estimatedCost?: number;
 };
 
+export type UsageSeriesPoint = {
+  t: number;
+  requests: number;
+  tokens: number;
+  cost: number;
+  input: number;
+  cache: number;
+  output: number;
+};
+
 export interface UsageStore {
   record(event: UsageRecord): void;
   rollup(since: number, group?: UsageGroup, filter?: UsageFilter): Promise<Record<string, unknown>[]>;
-  series(
-    since: number,
-    bucketMs: number,
-    filter?: UsageFilter,
-  ): Promise<{ t: number; requests: number; tokens: number; cost: number }[]>;
+  series(since: number, bucketMs: number, filter?: UsageFilter): Promise<UsageSeriesPoint[]>;
 }
 
 const GROUP_COLUMN: Record<UsageGroup, string> = {
@@ -333,21 +339,31 @@ export class UsageRepo {
       .all(...params) as Record<string, unknown>[];
   }
 
-  series(since: number, bucketMs: number, filter?: UsageFilter): { t: number; requests: number; tokens: number; cost: number }[] {
+  series(since: number, bucketMs: number, filter?: UsageFilter): UsageSeriesPoint[] {
     const { sql, params } = usageWhere(since, filter);
     const rows = this.db
       .prepare(`SELECT at, input_tokens, cache_read_tokens, output_tokens, estimated_cost FROM usage_events WHERE ${sql} ORDER BY at`)
       .all(...params) as { at: number; input_tokens: number; cache_read_tokens: number; output_tokens: number; estimated_cost: number | null }[];
-    const buckets = new Map<number, { requests: number; tokens: number; cost: number }>();
+    const buckets = new Map<number, { requests: number; input: number; cache: number; output: number; cost: number }>();
     for (const row of rows) {
       const t = Math.floor(row.at / bucketMs) * bucketMs;
-      const cur = buckets.get(t) ?? { requests: 0, tokens: 0, cost: 0 };
+      const cur = buckets.get(t) ?? { requests: 0, input: 0, cache: 0, output: 0, cost: 0 };
       cur.requests += 1;
-      cur.tokens += (row.input_tokens ?? 0) + (row.output_tokens ?? 0);
+      cur.input += row.input_tokens ?? 0;
+      cur.cache += row.cache_read_tokens ?? 0;
+      cur.output += row.output_tokens ?? 0;
       cur.cost += row.estimated_cost ?? 0;
       buckets.set(t, cur);
     }
-    return [...buckets.entries()].map(([t, v]) => ({ t, ...v }));
+    return [...buckets.entries()].map(([t, v]) => ({
+      t,
+      requests: v.requests,
+      input: v.input,
+      cache: v.cache,
+      output: v.output,
+      tokens: v.input + v.cache + v.output,
+      cost: v.cost,
+    }));
   }
 }
 

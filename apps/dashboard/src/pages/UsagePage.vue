@@ -70,6 +70,7 @@ function label(id?: string) {
       </section>
       <p class="font-mono text-[11px] text-mist">
         Cache read {{ formatTokens(month.cacheReadTokens) }} · Uncached input {{ formatTokens(month.inputTokens) }}
+        · Output {{ formatTokens(month.outputTokens) }}
         <span v-if="usage.consumed"> · Estimated inference {{ formatMoney(usage.consumed as number) }}</span>
       </p>
       <p v-if="usage.subsidy" class="font-mono text-[11px] text-mist">
