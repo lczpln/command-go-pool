@@ -597,7 +597,7 @@ Schema: [`docs/schema.md`](docs/schema.md).
 
 The container binds `0.0.0.0`. A pool API key is optional; generate one if you want to lock the endpoint. Set `COMMAND_GO_POOL_DASHBOARD_PASSWORD` to lock the UI. Persist `/data`. Put TLS in front of a public port.
 
-Images are published to GHCR on each `v*` release tag (`linux/amd64` and `linux/arm64`):
+Images are published to GHCR on each `v*` release tag, or by running the **publish** workflow with target **docker** (`linux/amd64` and `linux/arm64`). See [`docs/publish.md`](docs/publish.md).
 
 ```text
 ghcr.io/lczpln/command-go-pool:latest
