@@ -8,7 +8,7 @@ command-go-pool setup opencode
 
 This command:
 
-1. Detects `~/.config/opencode/opencode.json` (or `$OPENCODE_CONFIG`)
+1. Detects `~/.config/opencode/opencode.json` (or `$OPENCODE_CONFIG`). The dashboard Clients page can override the path. In Docker, share that file with the OpenCode container via a volume — see [`troubleshooting.md`](troubleshooting.md).
 2. Writes a timestamped `.bak.*` copy if the file exists
 3. Fetches enabled models from `GET /v1/models` (falls back to the three DeepSeek Go models if the pool is down)
 4. Adds provider `command-go-pool` pointing at `http://127.0.0.1:8787/v1` with the saved pool API key, or `pool-managed` if none is set

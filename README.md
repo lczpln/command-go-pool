@@ -418,7 +418,7 @@ command-go-pool setup opencode
 
 This command:
 
-1. Reads `~/.config/opencode/opencode.json` (or `$OPENCODE_CONFIG`)
+1. Reads `~/.config/opencode/opencode.json` (or `$OPENCODE_CONFIG`). The dashboard Clients page can override the path. If the pool and OpenCode are separate containers, share that file with a volume (see [`docs/troubleshooting.md`](docs/troubleshooting.md)).
 2. Writes a timestamped `.bak.<timestamp>` copy if the file exists
 3. Fetches enabled models from `GET /v1/models` (falls back to the three DeepSeek Go models if the pool is down)
 4. Adds provider `command-go-pool` pointing at `http://127.0.0.1:8787/v1`
@@ -625,7 +625,7 @@ Build locally instead of pulling:
 docker compose up --build
 ```
 
-[`docker-compose.yml`](docker-compose.yml) maps port `8787` and a named volume onto `/data`. Inside the image, `COMMAND_GO_POOL_HOME=/data`. A pool API key is optional; generate one on Settings or with `command-go-pool rotate` if you want to lock the endpoint. Set `COMMAND_GO_POOL_DASHBOARD_PASSWORD` in the environment to lock the dashboard.
+[`docker-compose.yml`](docker-compose.yml) maps port `8787` and named volumes onto `/data` and `/home/node/.config/opencode`. Inside the image, `COMMAND_GO_POOL_HOME=/data`. Mount the OpenCode config volume into the OpenCode container as well (`/root/.config/opencode` if that process runs as root). A pool API key is optional; generate one on Settings or with `command-go-pool rotate` if you want to lock the endpoint. Set `COMMAND_GO_POOL_DASHBOARD_PASSWORD` in the environment to lock the dashboard.
 
 If data looks empty after a restart, the volume was not mounted. See [`docs/troubleshooting.md`](docs/troubleshooting.md).
 

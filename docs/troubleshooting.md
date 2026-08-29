@@ -43,7 +43,26 @@ Forgot the dashboard password: unset or replace `COMMAND_GO_POOL_DASHBOARD_PASSW
 
 ## OpenCode did not pick up the provider
 
-`setup opencode` writes `~/.config/opencode/opencode.json` and keeps unrelated providers. If your OpenCode version uses another path, set `OPENCODE_CONFIG`. A `.bak.<timestamp>` copy is created first.
+`setup opencode` writes `~/.config/opencode/opencode.json` (or `$OPENCODE_CONFIG`) and keeps unrelated providers. The dashboard Clients page can override the path before Connect. A `.bak.<timestamp>` copy is created first.
+
+If the pool and OpenCode run in **separate containers** (Dokploy, Compose sidecar), Connect writes inside the pool container (`/home/node/.config/opencode/opencode.json` when the image runs as `node`). OpenCode as root reads `/root/.config/opencode/opencode.json`. Share one volume:
+
+```yaml
+services:
+  pool:
+    environment:
+      OPENCODE_CONFIG: /home/node/.config/opencode/opencode.json
+    volumes:
+      - opencode-config:/home/node/.config/opencode
+  opencode:
+    volumes:
+      - opencode-config:/root/.config/opencode
+
+volumes:
+  opencode-config:
+```
+
+Copy the existing OpenCode file into that volume before mounting, or a new empty volume will hide `/root/.config/opencode`. After Connect, the provider `baseURL` must be a hostname the OpenCode container can reach (the Compose service name), not `127.0.0.1`.
 
 The OpenCode picker does not poll `GET /v1/models`. After toggling models in the dashboard, run `command-go-pool setup opencode` again or use **Sync with clients** on the Models page.
 

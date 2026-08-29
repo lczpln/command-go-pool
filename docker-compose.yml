@@ -10,8 +10,13 @@ services:
       COMMAND_GO_POOL_API_KEY: "${COMMAND_GO_POOL_API_KEY:-}"
       COMMAND_GO_POOL_DASHBOARD_PASSWORD: "${COMMAND_GO_POOL_DASHBOARD_PASSWORD:-}"
       COMMAND_GO_POOL_MASTER_KEY: "${COMMAND_GO_POOL_MASTER_KEY:-}"
+      OPENCODE_CONFIG: "${OPENCODE_CONFIG:-/home/node/.config/opencode/opencode.json}"
     volumes:
       - command-go-pool:/data
+      # Share this volume with the OpenCode container. OpenCode as root reads
+      # /root/.config/opencode/opencode.json — mount the same volume there.
+      - opencode-config:/home/node/.config/opencode
 
 volumes:
   command-go-pool:
+  opencode-config:

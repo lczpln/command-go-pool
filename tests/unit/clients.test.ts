@@ -6,6 +6,7 @@ import {
   parseAppConfig,
   connectClient,
   disconnectClient,
+  listClientStatuses,
   rotatePoolApiKey,
   generatePoolApiKey,
   isPoolApiKeyFormat,
@@ -98,6 +99,19 @@ describe("client adapters", () => {
     const detected = opencodeAdapter.detect({ homedir: join(dir, "home"), env: { OPENCODE_CONFIG: join(dir, "opencode.json"), PATH: "" } });
     expect(detected.installed).toBe(true);
     expect(detected.configPath).toBe(join(dir, "opencode.json"));
+  });
+
+  it("lists the stored OpenCode file after connect, not the process default", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "cgp-list-oc-"));
+    const file = join(dir, "custom-opencode.json");
+    const config = parseAppConfig({});
+    const { config: next } = await connectClient("opencode", config, {
+      file,
+      models: [{ id: "deepseek/deepseek-v4-flash" }],
+    });
+    const listed = listClientStatuses(next).find((row) => row.id === "opencode");
+    expect(listed?.connected).toBe(true);
+    expect(listed?.configPath).toBe(file);
   });
 
   it("detects Claude Code from ~/.claude without touching settings.json", () => {

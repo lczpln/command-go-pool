@@ -138,10 +138,13 @@ test.describe("dashboard", () => {
     await expect(page.getByRole("heading", { name: "OpenCode" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Claude Code" })).toBeVisible();
     const card = page.locator("article").filter({ has: page.getByRole("heading", { name: "OpenCode" }) });
-    const connected = await page.request.post("/api/clients/opencode/connect", { data: { file } });
-    expect(connected.ok()).toBeTruthy();
-    await page.reload();
+    const disconnect = card.getByRole("button", { name: "Disconnect" });
+    if (await disconnect.isVisible()) await disconnect.click();
+    await expect(card.getByRole("button", { name: "Connect" })).toBeVisible();
+    await card.getByLabel("OpenCode config path").fill(file);
+    await card.getByRole("button", { name: "Connect" }).click();
     await expect(card.getByText("CONNECTED")).toBeVisible();
+    await expect(card.getByLabel("OpenCode config path")).toHaveValue(file);
     await card.getByRole("button", { name: "Disconnect" }).click();
     await expect(card.getByRole("button", { name: "Connect" })).toBeVisible();
   });
