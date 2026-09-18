@@ -335,7 +335,13 @@ export async function buildApp(runtime: Runtime) {
       return reply.code(400).send({ error: responsesErrorPayload("unsupported_model", `Model ${parsed.data.model} is disabled`) });
     }
     const headers = headerMap(req.headers);
-    if (!normalized.sessionHint) normalized.sessionHint = headers["thread-id"]?.trim() || headers["session-id"]?.trim();
+    if (!normalized.sessionHint) {
+      normalized.sessionHint =
+        headers["thread-id"]?.trim() ||
+        headers["session-id"]?.trim() ||
+        headers["conversation_id"]?.trim() ||
+        headers["conversation-id"]?.trim();
+    }
     const abort = new AbortController();
     reply.raw.on("close", () => {
       if (!reply.raw.writableEnded) abort.abort();

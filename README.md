@@ -2,7 +2,7 @@
 
 Local inference gateway that pools **user-owned** Command Code Go subscriptions into one sticky, quota-aware endpoint.
 
-Clients (OpenCode, Claude Code, Cline, Roo Code, curl) see a single OpenAI- and Anthropic-compatible URL. You see every account, quota window, session, and failover on the dashboard.
+Clients (OpenCode, Claude Code, Codex Desktop, Cline, Roo Code, curl) see a single OpenAI- and Anthropic-compatible URL. You see every account, quota window, session, and failover on the dashboard.
 
 ```bash
 npx command-go-pool@latest
@@ -118,6 +118,7 @@ command-go-pool --version
 | `command-go-pool client …` | List, connect, or disconnect local CLIs |
 | `command-go-pool setup opencode` | Alias of `client connect opencode` |
 | `command-go-pool setup claude` | Alias of `client connect claude` |
+| `command-go-pool setup codex` | Alias of `client connect codex` |
 
 ### Start the pool
 
@@ -127,7 +128,7 @@ command-go-pool
 command-go-pool start
 ```
 
-Creates a default config on first run if none exists. On an interactive TTY it also detects compatible CLIs (OpenCode, Claude Code), lets you Space-select which to wire, then writes pool config into each selected CLI folder. It does **not** generate a pool API key. Then serves:
+Creates a default config on first run if none exists. On an interactive TTY it also detects compatible CLIs (OpenCode, Claude Code, Codex Desktop), lets you Space-select which to wire, then writes pool config into each selected CLI folder. It does **not** generate a pool API key. Then serves:
 
 - Inference at `http://<host>:<port>/v1`
 - Dashboard at `http://<host>:<port>`
@@ -159,11 +160,11 @@ Optional. Prints a new `cgp_…` key once and writes it into every connected CLI
 ```bash
 command-go-pool client list
 command-go-pool client connect
-command-go-pool client connect opencode claude
+command-go-pool client connect opencode claude codex
 command-go-pool client disconnect opencode
 ```
 
-`connect` without ids opens the same Space-to-select prompt as first-run. `setup opencode` / `setup claude` remain as aliases.
+`connect` without ids opens the same Space-to-select prompt as first-run. `setup opencode` / `setup claude` / `setup codex` remain as aliases.
 
 ### Status
 
@@ -271,6 +272,7 @@ command-go-pool client list
 command-go-pool client connect
 command-go-pool setup opencode
 command-go-pool setup claude
+command-go-pool setup codex
 ```
 
 These write **local client config** that points at the pool. They do not start the server. See [Client integrations](#client-integrations).
@@ -294,7 +296,7 @@ Sign in at the UI. The password is env-only — not stored in `config.yaml`, and
 | --- | --- |
 | Overview | Pool health, quota bars, live account mix |
 | Accounts | Paste Studio keys, inspect, test, enable/disable |
-| Clients | Connect or disconnect local CLIs (OpenCode, Claude Code) |
+| Clients | Connect or disconnect local CLIs (OpenCode, Claude Code, Codex Desktop) |
 | Models | Toggle which model ids the pool exposes; Sync with clients |
 | Sessions | Sticky bindings, migrations, token usage |
 | Usage | Request/cost rollups over time |
@@ -313,6 +315,7 @@ Base URL: `http://127.0.0.1:8787/v1`
 | --- | --- | --- |
 | `GET` | `/v1/models` | OpenAI-style catalog |
 | `POST` | `/v1/chat/completions` | OpenAI Chat Completions (SSE when `stream: true`) |
+| `POST` | `/v1/responses` | OpenAI Responses API (Codex Desktop `wire_api = "responses"`) |
 | `POST` | `/v1/messages` | Anthropic Messages (SSE when `stream: true`) |
 | `GET` | `/v1/usage` | Pooled 5h / weekly / monthly windows (OpenCode Go shape) |
 
@@ -350,7 +353,7 @@ Generating or rotating the key updates every connected CLI automatically. This i
 
 If the client cannot set extra headers, the pool fingerprints `model + system + first user text` (with a collision suffix) so a conversation still stays on one account.
 
-Session id priority: `X-Command-Go-Session` → OpenAI/Anthropic metadata → `prompt_cache_key` → client hints → fingerprint.
+Session id priority: `X-Command-Go-Session` → `thread-id` / `session-id` / `conversation_id` → OpenAI/Anthropic metadata → `prompt_cache_key` → fingerprint.
 
 ### curl
 
@@ -489,6 +492,32 @@ curl -s http://127.0.0.1:8787/v1/usage \
 ```
 
 More detail: [`docs/claude.md`](docs/claude.md).
+
+### Codex Desktop
+
+```bash
+command-go-pool setup codex
+```
+
+Writes `~/.codex/config.toml` (user-level only — Codex ignores provider keys in a project `.codex/config.toml`):
+
+```toml
+model = "deepseek/deepseek-v4-flash"
+model_provider = "command-go-pool"
+
+[model_providers.command-go-pool]
+name = "Command Go Pool"
+base_url = "http://127.0.0.1:8787/v1"
+wire_api = "responses"
+requires_openai_auth = false
+supports_websockets = false
+stream_idle_timeout_ms = 600000
+experimental_bearer_token = "pool-managed"
+```
+
+Restart Codex Desktop and select **Command Go Pool**. Current Codex only speaks Responses (`POST /v1/responses`); Chat Completions is not enough. Use a Go model id from `GET /v1/models`, not `gpt-5`.
+
+More detail: [`docs/codex.md`](docs/codex.md).
 
 ### Other OpenAI-compatible clients
 
@@ -667,6 +696,7 @@ CI (`.github/workflows/ci.yml`) runs install, unit tests, build, and Playwright 
 | [`docs/api-contracts.md`](docs/api-contracts.md) | `/v1` inference and `/api` admin routes |
 | [`docs/opencode.md`](docs/opencode.md) | OpenCode setup details |
 | [`docs/claude.md`](docs/claude.md) | Claude Code setup and `/usage` |
+| [`docs/codex.md`](docs/codex.md) | Codex Desktop `config.toml` and Responses API |
 | [`docs/troubleshooting.md`](docs/troubleshooting.md) | Auth, quota, Docker, protocol drift |
 | [`docs/schema.md`](docs/schema.md) | SQLite tables |
 | [`docs/research.md`](docs/research.md) | Upstream Command Code behavior |

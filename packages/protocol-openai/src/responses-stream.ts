@@ -5,6 +5,7 @@ interface MessageItem {
   id: string;
   index: number;
   text: string;
+  partStarted: boolean;
 }
 
 interface ReasoningItem {
@@ -141,6 +142,7 @@ export function responsesErrorPayload(code: PoolErrorCode, message: string) {
   if (code === "invalid_request" || code === "unsupported_model") {
     return { message, type: "invalid_request_error", code: "invalid_prompt" };
   }
+  if (code === "auth_failed") return { message, type: "invalid_request_error", code: "invalid_api_key" };
   return { message, type: "server_error", code: "server_error" };
 }
 
@@ -155,7 +157,7 @@ function textFrames(text: string, state: ResponsesStreamState): string {
   const frames: string[] = [];
   if (!state.message) {
     if (state.reasoning) frames.push(closeReasoning(state));
-    const item: MessageItem = { id: newId("msg"), index: state.nextIndex++, text: "" };
+    const item: MessageItem = { id: newId("msg"), index: state.nextIndex++, text: "", partStarted: false };
     state.message = item;
     frames.push(
       frame(state, "response.output_item.added", {
@@ -165,6 +167,17 @@ function textFrames(text: string, state: ResponsesStreamState): string {
     );
   }
   const item = state.message;
+  if (!item.partStarted) {
+    item.partStarted = true;
+    frames.push(
+      frame(state, "response.content_part.added", {
+        item_id: item.id,
+        output_index: item.index,
+        content_index: 0,
+        part: { type: "output_text", text: "", annotations: [] },
+      }),
+    );
+  }
   item.text += text;
   frames.push(
     frame(state, "response.output_text.delta", {

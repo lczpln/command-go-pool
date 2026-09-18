@@ -19,6 +19,17 @@ Command Code may omit rolling-window fields on the API-key billing surface. The 
 
 `~61%` or “Estimated from local usage” means the number is derived from observed tokens/cost, not an upstream meter. Exact values come from billing/window payloads.
 
+## Codex Desktop will not talk to the pool
+
+Codex only speaks the Responses API. Confirm `POST /v1/responses` exists (this pool version) and that `~/.codex/config.toml` has:
+
+- `model_provider = "command-go-pool"` in the **user** file (not a project `.codex/config.toml`)
+- `[model_providers.command-go-pool]` with `base_url = "http://127.0.0.1:8787/v1"` and `wire_api = "responses"`
+- a Go model id (`deepseek/deepseek-v4-flash` or `pro`/`flash`), not `gpt-5`
+- `requires_openai_auth = false` and `supports_websockets = false`
+
+Restart Codex Desktop after editing. `command-go-pool setup codex` writes this file. If the stream starts then goes silent, raise `stream_idle_timeout_ms` (setup uses `600000`).
+
 ## Claude Code / OpenCode usage is empty
 
 The dashboard **Usage** page is local request rollups (`GET /api/usage`). Client `/usage` meters come from pooled quota windows:

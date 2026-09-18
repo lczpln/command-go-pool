@@ -1,6 +1,7 @@
 import { generatePoolApiKey } from "../pool-key.js";
 import type { AppConfig } from "../config.js";
 import { claudeAdapter } from "./claude.js";
+import { connectCodexWithModels, codexAdapter } from "./codex.js";
 import { connectOpenCodeWithModels, opencodeAdapter } from "./opencode.js";
 import type { ClientAdapter, ClientId, ClientStatus, ClientWriteResult, ConnectOptions } from "./types.js";
 import { CLIENT_IDS } from "./types.js";
@@ -8,6 +9,7 @@ import { CLIENT_IDS } from "./types.js";
 const adapters: Record<ClientId, ClientAdapter> = {
   opencode: opencodeAdapter,
   claude: claudeAdapter,
+  codex: codexAdapter,
 };
 
 export function getClientAdapter(id: string): ClientAdapter | undefined {
@@ -56,7 +58,12 @@ export async function connectClient(
     return { config, result: { id: "opencode", ok: false, file: "", message: `Unknown client ${id}` } };
   }
   const adapter = adapters[id];
-  const result = id === "opencode" ? await connectOpenCodeWithModels(config, opts) : adapter.connect(config, opts);
+  const result =
+    id === "opencode"
+      ? await connectOpenCodeWithModels(config, opts)
+      : id === "codex"
+        ? await connectCodexWithModels(config, opts)
+        : adapter.connect(config, opts);
   return { config: withConnected(config, id, result.ok ? result.file : undefined), result };
 }
 

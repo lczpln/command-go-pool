@@ -133,6 +133,7 @@ describe("responses stream encoding", () => {
     expect(list.map((row) => row.event)).toEqual([
       "response.created",
       "response.output_item.added",
+      "response.content_part.added",
       "response.output_text.delta",
       "response.output_text.delta",
       "response.output_text.done",
@@ -142,9 +143,11 @@ describe("responses stream encoding", () => {
     ]);
     const added = list[1]?.data.item as { content: unknown[] };
     expect(added.content).toEqual([]);
-    const done = list[6]?.data.item as { content: { text: string }[] };
+    const part = list[2]?.data.part as { type: string; text: string };
+    expect(part).toEqual({ type: "output_text", text: "", annotations: [] });
+    const done = list[7]?.data.item as { content: { text: string }[] };
     expect(done.content[0]?.text).toBe("hello");
-    const completed = list[7]?.data.response as { output: unknown[]; usage: Record<string, unknown> };
+    const completed = list[8]?.data.response as { output: unknown[]; usage: Record<string, unknown> };
     expect(completed.output).toHaveLength(1);
     expect(completed.usage).toMatchObject({ input_tokens: 3, output_tokens: 2, total_tokens: 5 });
   });
@@ -236,11 +239,13 @@ describe("responses error mapping", () => {
     expect(responsesErrorStatus("auth_failed")).toBe(401);
     expect(responsesErrorStatus("unsupported_model")).toBe(400);
     expect(responsesErrorStatus("upstream_5xx")).toBe(502);
+    expect(responsesErrorCode("auth_failed")).toBe("invalid_api_key");
   });
 
   it("emits codex-compatible pre-stream payloads", () => {
     expect(responsesErrorPayload("quota_exhausted", "x")).toEqual({ message: "x", type: "usage_limit_reached", code: "insufficient_quota" });
     expect(responsesErrorPayload("rate_limited", "x").type).toBe("rate_limit_exceeded");
+    expect(responsesErrorPayload("auth_failed", "x")).toEqual({ message: "x", type: "invalid_request_error", code: "invalid_api_key" });
     expect(responsesErrorPayload("unknown", "x").type).toBe("server_error");
   });
 });

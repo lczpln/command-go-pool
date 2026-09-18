@@ -103,7 +103,7 @@ describe("responses integration", () => {
     const res = await instance.app.inject({
       method: "POST",
       url: "/v1/responses",
-      headers: poolHeaders(instance, { "thread-id": "thread_123" }),
+      headers: poolHeaders(instance, { "conversation_id": "thread_123" }),
       payload: {
         model: "deepseek/deepseek-v4-flash",
         input: [
@@ -158,8 +158,8 @@ describe("responses integration", () => {
       payload: { model: "deepseek/deepseek-v4-flash", input: "hi", stream: true },
     });
     expect(res.statusCode).toBe(401);
-    const body = res.json() as { error: { type: string } };
-    expect(body.error.type).toBe("server_error");
+    const body = res.json() as { error: { type: string; code: string } };
+    expect(body.error).toEqual({ message: "Authentication failed", type: "invalid_request_error", code: "invalid_api_key" });
     await instance.close();
   });
 

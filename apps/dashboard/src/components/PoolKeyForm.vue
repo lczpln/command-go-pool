@@ -28,7 +28,9 @@ watch(
 );
 
 function updatedLabel(updated: Array<{ id: string; ok: boolean }>) {
-  const names = updated.filter((row) => row.ok).map((row) => (row.id === "claude" ? "Claude Code" : row.id === "opencode" ? "OpenCode" : row.id));
+  const names = updated
+    .filter((row) => row.ok)
+    .map((row) => (row.id === "claude" ? "Claude Code" : row.id === "opencode" ? "OpenCode" : row.id === "codex" ? "Codex Desktop" : row.id));
   if (names.length === 0) return "No connected CLIs to update.";
   return `Updated ${names.join(" and ")}.`;
 }

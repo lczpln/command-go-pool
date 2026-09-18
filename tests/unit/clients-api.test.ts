@@ -19,6 +19,7 @@ describe("client and pool key APIs", () => {
     const ids = (listed.json() as { clients: Array<{ id: string }> }).clients.map((row) => row.id);
     expect(ids).toContain("opencode");
     expect(ids).toContain("claude");
+    expect(ids).toContain("codex");
 
     const connected = await instance.app.inject({
       method: "POST",
