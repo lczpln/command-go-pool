@@ -19,6 +19,7 @@ Unsupported upstream features return a clear compatibility error (`invalid_reque
 Headers:
 
 - `X-Command-Go-Session` — sticky session id
+- `thread-id` / `session-id` / `conversation_id` — Codex (and similar) conversation ids, used when the pool header is absent
 - `X-Command-Go-Routing` — `sticky` \| `balanced` \| `most-available` \| `round-robin` (request override)
 - `X-Command-Go-Sticky: 0` — opt out of stickiness for this request
 

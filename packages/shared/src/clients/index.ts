@@ -3,6 +3,17 @@ export { defaultOpenCodeFile, opencodeAdapter, connectOpenCodeWithModels } from 
 export { defaultClaudeDir, defaultClaudeFile, claudeAdapter, pickClaudeModelDefaults, CLAUDE_FALLBACK_DEFAULTS } from "./claude.js";
 export type { ClaudeModelDefaults } from "./claude.js";
 export {
+  defaultCodexHome,
+  defaultCodexFile,
+  codexAdapter,
+  connectCodexWithModels,
+  pickCodexModel,
+  upsertCodexToml,
+  removeCodexProvider,
+  CODEX_PROVIDER_ID,
+  CODEX_FALLBACK_MODEL,
+} from "./codex.js";
+export {
   getClientAdapter,
   listClientAdapters,
   listClientStatuses,
