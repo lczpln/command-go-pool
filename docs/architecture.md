@@ -23,7 +23,11 @@ Implementations:
 
 Coding agents depend on prompt cache. Round-robin per message would burn quota and cache. New sessions are quota-scored; existing sessions stay bound until failover.
 
-Session id priority: `X-Command-Go-Session` → OpenAI/Anthropic metadata → `prompt_cache_key` → client hints → fingerprint(`model + system + first user text`) with collision suffix.
+Session id priority: `X-Command-Go-Session` → `thread-id` / `session-id` / `conversation_id` → OpenAI/Anthropic metadata → `prompt_cache_key` → fingerprint(`model + system + first user text`) with collision suffix.
+
+## ADR-2b — Responses API reuses the same pipeline
+
+`POST /v1/responses` is a third front end on the same `executeRequest` path, not a sidecar. `responsesToNormalized` maps `instructions` to the system prompt, `input` items to normalized messages (`function_call` → assistant tool calls, `function_call_output` → `role: "tool"` results, `reasoning` dropped), and flat `function`/`custom`/`namespace` tools to `NormalizedTool`. `ResponsesStreamEncoder` replays the normalized chunk stream as Codex 0.147 SSE: `response.created` → per-item `output_item.added` → `content_part.added` → deltas → `output_item.done` → `response.completed`. Only one item is open at a time, item ids are prefixed (`msg_`, `rs_`, `fc_`, `resp_`), and Codex builds tool calls exclusively from `output_item.done`, so partial tool calls are flushed there. Text items emit `response.content_part.added` before the first `output_text.delta` (Codex drops deltas without an active part). Pre-stream failures return Codex-shaped JSON errors with mapped status codes (quota → 429 `usage_limit_reached`, auth → 401 `invalid_api_key`, invalid → 400); failures after the first frame emit `response.failed`. Codex sessions bind via `thread-id` / `session-id` / `conversation_id`.
 
 ## ADR-3 — Quota honesty
 

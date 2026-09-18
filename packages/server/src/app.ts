@@ -3,7 +3,21 @@ import fastifyStatic from "@fastify/static";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openaiChatSchema, openaiToNormalized, openaiChunkFrame, openaiFinal } from "@command-go-pool/protocol-openai";
+import {
+  openaiChatSchema,
+  openaiToNormalized,
+  openaiChunkFrame,
+  openaiFinal,
+  responsesRequestSchema,
+  responsesToNormalized,
+  responsesStreamState,
+  responsesCreatedFrame,
+  responsesStreamFrames,
+  responsesCompletedFrame,
+  responsesFinal,
+  responsesErrorPayload,
+  responsesErrorStatus,
+} from "@command-go-pool/protocol-openai";
 import {
   anthropicMessageSchema,
   anthropicToNormalized,
@@ -36,6 +50,8 @@ import {
   writeOpenCodeConfig,
   dashboardPassword,
   type AppConfig,
+  type NormalizedChunk,
+  type TokenUsage,
 } from "@command-go-pool/shared";
 import {
   aggregatePool,
@@ -128,7 +144,12 @@ function sseHead(quota: ClientQuota): Record<string, string> {
 }
 
 export async function buildApp(runtime: Runtime) {
-  const app = Fastify({ loggerInstance: runtime.log, forceCloseConnections: true, trustProxy: true });
+  const app = Fastify({
+    loggerInstance: runtime.log,
+    forceCloseConnections: true,
+    trustProxy: true,
+    bodyLimit: 32 * 1024 * 1024,
+  });
   const loginLimiter = new LoginLimiter();
   app.addHook("preClose", async () => {
     runtime.shutdown.abort();
@@ -302,6 +323,101 @@ export async function buildApp(runtime: Runtime) {
     }
     applyUsageHeaders(reply, quota);
     return openaiFinal(id, normalized.model, created, text, tools, usage, reasoning);
+  });
+
+  app.post("/v1/responses", async (req, reply) => {
+    const parsed = responsesRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: { message: parsed.error.message, type: "invalid_request_error", code: "invalid_prompt" } });
+    }
+    const normalized = responsesToNormalized(parsed.data, runtime.config.aliases);
+    if (!isModelEnabled(parsed.data.model, runtime.config) || !isModelEnabled(normalized.model, runtime.config)) {
+      return reply.code(400).send({ error: responsesErrorPayload("unsupported_model", `Model ${parsed.data.model} is disabled`) });
+    }
+    const headers = headerMap(req.headers);
+    if (!normalized.sessionHint) {
+      normalized.sessionHint =
+        headers["thread-id"]?.trim() ||
+        headers["session-id"]?.trim() ||
+        headers["conversation_id"]?.trim() ||
+        headers["conversation-id"]?.trim();
+    }
+    const abort = new AbortController();
+    reply.raw.on("close", () => {
+      if (!reply.raw.writableEnded) abort.abort();
+    });
+    let stream: AsyncIterable<NormalizedChunk>;
+    try {
+      ({ stream } = executeRequest(runtime, normalized, headers, abort.signal));
+    } catch (error) {
+      return reply.code(503).send({
+        error: { message: error instanceof Error ? error.message : "No eligible accounts", type: "server_error", code: "server_error" },
+      });
+    }
+    const id = newId("resp");
+    const created = Math.floor(Date.now() / 1000);
+    const quota = clientQuota(runtime);
+    const iterator = stream[Symbol.asyncIterator]();
+    const first = await iterator.next();
+    if (!first.done && first.value.type === "error") {
+      const failure = first.value.error;
+      return reply.code(responsesErrorStatus(failure.code)).send({ error: responsesErrorPayload(failure.code, failure.message) });
+    }
+    if (normalized.stream) {
+      reply.hijack();
+      reply.raw.writeHead(200, sseHead(quota));
+      const state = responsesStreamState();
+      reply.raw.write(responsesCreatedFrame(id, normalized.model, created, state));
+      try {
+        if (!first.done) reply.raw.write(responsesStreamFrames(id, normalized.model, created, first.value, state));
+        while (true) {
+          const next = await iterator.next();
+          if (next.done) break;
+          reply.raw.write(responsesStreamFrames(id, normalized.model, created, next.value, state));
+        }
+        if (!state.terminal) reply.raw.write(responsesCompletedFrame(id, normalized.model, created, state));
+      } finally {
+        reply.raw.end();
+      }
+      return;
+    }
+    let text = "";
+    let reasoning = "";
+    const tools: { id: string; name: string; arguments: string }[] = [];
+    let usage: TokenUsage | undefined;
+    const consume = (chunk: NormalizedChunk) => {
+      if (chunk.type === "text-delta") text += chunk.text;
+      else if (chunk.type === "reasoning-delta") reasoning += chunk.text;
+      else if (chunk.type === "tool-call") {
+        const argumentsText = typeof chunk.arguments === "string" ? chunk.arguments : JSON.stringify(chunk.arguments ?? {});
+        const existing = tools.find((tool) => tool.id === chunk.id);
+        if (existing) {
+          existing.name = chunk.name || existing.name;
+          existing.arguments = argumentsText;
+        } else {
+          tools.push({ id: chunk.id, name: chunk.name, arguments: argumentsText });
+        }
+      } else if (chunk.type === "finish") usage = chunk.usage ?? usage;
+      else if (chunk.type === "usage") usage = chunk.usage;
+      else if (chunk.type === "tool-call-delta") {
+        const existing = tools.find((tool) => tool.id === chunk.id);
+        if (existing) {
+          if (chunk.name) existing.name = chunk.name;
+          existing.arguments += chunk.argumentsDelta;
+        } else {
+          tools.push({ id: chunk.id, name: chunk.name, arguments: chunk.argumentsDelta });
+        }
+      }
+    };
+    if (!first.done) consume(first.value);
+    for await (const chunk of { [Symbol.asyncIterator]: () => iterator }) {
+      if (chunk.type === "error") {
+        return reply.code(responsesErrorStatus(chunk.error.code)).send({ error: responsesErrorPayload(chunk.error.code, chunk.error.message) });
+      }
+      consume(chunk);
+    }
+    applyUsageHeaders(reply, quota);
+    return responsesFinal(id, normalized.model, created, text, reasoning, tools, usage);
   });
 
   app.post("/v1/messages", async (req, reply) => {

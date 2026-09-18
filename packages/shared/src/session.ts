@@ -24,7 +24,13 @@ export function identifySession(request: NormalizedRequest, headers: Record<stri
 } {
   const stickyHeader = headers["x-command-go-sticky"];
   const sticky = request.sticky !== false && stickyHeader !== "0" && stickyHeader !== "false";
-  const explicit = headers["x-command-go-session"] || request.sessionHint;
+  const explicit =
+    headers["x-command-go-session"] ||
+    request.sessionHint ||
+    headers["thread-id"] ||
+    headers["session-id"] ||
+    headers["conversation_id"] ||
+    headers["conversation-id"];
   if (explicit) return { id: explicit, source: "header", sticky };
   const meta = request.metadata ?? {};
   const fromMeta =

@@ -11,7 +11,9 @@ import {
   isPoolApiKeyFormat,
   claudeAdapter,
   opencodeAdapter,
+  codexAdapter,
   pickClaudeModelDefaults,
+  pickCodexModel,
   syncConnectedClients,
 } from "@command-go-pool/shared";
 
@@ -100,6 +102,49 @@ describe("client adapters", () => {
     expect(detected.configPath).toBe(join(dir, "opencode.json"));
   });
 
+  it("connects Codex Desktop without wiping other TOML tables", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "cgp-clients-codex-"));
+    const file = join(dir, "config.toml");
+    writeFileSync(file, 'model = "gpt-5"\n\n[projects."/tmp/app"]\ntrust_level = "trusted"\n');
+    const config = parseAppConfig({ server: { host: "0.0.0.0", port: 8787 } });
+    const { config: next, result } = await connectClient("codex", config, {
+      file,
+      models: [{ id: "deepseek/deepseek-v4-pro" }, { id: "deepseek/deepseek-v4-flash" }],
+    });
+    const written = readFileSync(file, "utf8");
+    expect(result.ok).toBe(true);
+    expect(next.clients.connected.codex?.file).toBe(file);
+    expect(written).toContain('model = "deepseek/deepseek-v4-pro"');
+    expect(written).toContain('model_provider = "command-go-pool"');
+    expect(written).toContain('wire_api = "responses"');
+    expect(written).toContain('experimental_bearer_token = "pool-managed"');
+    expect(written).toContain('trust_level = "trusted"');
+  });
+
+  it("disconnects Codex and leaves the rest of config.toml", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "cgp-clients-codex-dc-"));
+    const file = join(dir, "config.toml");
+    let config = parseAppConfig({});
+    config = (await connectClient("codex", config, { file, models: [{ id: "deepseek/deepseek-v4-flash" }] })).config;
+    config = disconnectClient("codex", config, { file }).config;
+    const written = readFileSync(file, "utf8");
+    expect(written).not.toContain("[model_providers.command-go-pool]");
+    expect(written).toContain('model_provider = "openai"');
+    expect(config.clients.connected.codex).toBeUndefined();
+  });
+
+  it("detects Codex from CODEX_HOME without a binary", () => {
+    const home = mkdtempSync(join(tmpdir(), "cgp-detect-codex-"));
+    writeFileSync(join(home, "config.toml"), 'model = "gpt-5"\n');
+    const found = codexAdapter.detect({
+      homedir: home,
+      path: "",
+      env: { HOME: home, PATH: "", CODEX_HOME: home },
+    });
+    expect(found.installed).toBe(true);
+    expect(found.configPath).toBe(join(home, "config.toml"));
+  });
+
   it("detects Claude Code from ~/.claude without touching settings.json", () => {
     const home = mkdtempSync(join(tmpdir(), "cgp-detect-claude-"));
     writeFileSync(join(home, ".keep"), "");
@@ -112,6 +157,19 @@ describe("client adapters", () => {
 });
 
 describe("client catalog sync", () => {
+  it("picks a Go pro model for Codex when the current id is gone", () => {
+    expect(
+      pickCodexModel(
+        [
+          { id: "deepseek/deepseek-v4-flash" },
+          { id: "deepseek/deepseek-v4-pro" },
+          { id: "pro", aliasOf: "deepseek/deepseek-v4-pro" },
+        ],
+        "gpt-5",
+      ),
+    ).toBe("deepseek/deepseek-v4-pro");
+  });
+
   it("picks haiku/sonnet/opus from the enabled catalog", () => {
     expect(
       pickClaudeModelDefaults([

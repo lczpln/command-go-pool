@@ -285,6 +285,11 @@ function program() {
     saveConfig(config);
     console.log(result.message);
   });
+  setup.command("codex").action(async () => {
+    const { config, result } = await connectClient("codex", loadConfig());
+    saveConfig(config);
+    console.log(result.message);
+  });
 
   return cli;
 }

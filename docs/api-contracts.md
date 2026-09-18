@@ -9,6 +9,7 @@ Auth: if `server.apiKey` or `COMMAND_GO_POOL_API_KEY` is set, require `Authoriza
 | GET | `/v1/models` | Union of models usable by at least one **available** account, minus `config.models.disabled`. Aliases are included only when their target is enabled. |
 | GET | `/v1/usage` | Pooled quota windows in OpenCode Go shape: `{ usage: { rolling, weekly, monthly } }`. Unknown windows are `{ status: "unavailable" }`, never a fake percent. Optional `?account=` scopes to one account. |
 | POST | `/v1/chat/completions` | OpenAI. Stream = SSE `data:` chunks, forwarded immediately. Disabled models return `400 unsupported_model`. |
+| POST | `/v1/responses` | OpenAI Responses API (Codex `wire_api = "responses"`). Stream = `event:` + `data:` frames ending in `response.completed`; non-stream returns a `response` object. Accepts `instructions`, `input` items (`message`, `function_call`, `function_call_output`, `reasoning`), and flat `function`/`custom` tools. Failures before the first frame return JSON `{ error: { message, type, code } }` with a Codex-compatible status; failures mid-stream emit `response.failed`. Disabled models return `400 unsupported_model`. |
 | POST | `/v1/messages` | Anthropic. Stream = `event:` + `data:` frames. Disabled models return `400 unsupported_model`. A `max_tokens: 1` request whose only user text is `quota` is answered locally with rate-limit headers (Claude Code `/usage` ping). |
 
 When a window is known, inference responses include `anthropic-ratelimit-unified-*` (utilization 0–1) and `x-ratelimit-*` (percent remaining on the 5h window). Unknown windows omit those headers.
@@ -18,6 +19,7 @@ Unsupported upstream features return a clear compatibility error (`invalid_reque
 Headers:
 
 - `X-Command-Go-Session` — sticky session id
+- `thread-id` / `session-id` / `conversation_id` — Codex (and similar) conversation ids, used when the pool header is absent
 - `X-Command-Go-Routing` — `sticky` \| `balanced` \| `most-available` \| `round-robin` (request override)
 - `X-Command-Go-Sticky: 0` — opt out of stickiness for this request
 

@@ -53,15 +53,15 @@ describe("formatQuotaView", () => {
   });
 
   it("uses a calendar date for resets more than two days away", () => {
+    const resetAt = new Date(Date.now() + 10 * 24 * 3600_000).toISOString();
     const view = formatQuotaView({
       remainingPercent: 91,
       usedPercent: 9,
-      resetAt: "2026-09-18T00:00:00.000Z",
+      resetAt,
       source: "upstream",
       confidence: "exact",
     });
-    expect(view.reset).toMatch(/Sep/);
-    expect(view.reset).toMatch(/18/);
+    expect(view.reset).toBe(new Date(resetAt).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }));
   });
 });
 

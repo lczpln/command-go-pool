@@ -1,7 +1,7 @@
 import type { AppConfig } from "../config.js";
 import type { OpenCodeModelInput } from "../opencode.js";
 
-export const CLIENT_IDS = ["opencode", "claude"] as const;
+export const CLIENT_IDS = ["opencode", "claude", "codex"] as const;
 export type ClientId = (typeof CLIENT_IDS)[number];
 
 export interface ClientWriteResult {

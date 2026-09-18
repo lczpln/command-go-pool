@@ -22,6 +22,11 @@ export async function setupClaude(config: AppConfig, file?: string): Promise<str
   return result.message;
 }
 
+export async function setupCodex(config: AppConfig, file?: string): Promise<string> {
+  const { result } = await connectClient("codex", config, { file, apiKey: config.server.apiKey });
+  return result.message;
+}
+
 function parseServerFromUrl(baseUrl: string): { host: string; port: number } {
   try {
     const url = new URL(baseUrl);
